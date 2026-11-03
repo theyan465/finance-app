@@ -8,8 +8,9 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Траты">
 <link rel="manifest" href="manifest.webmanifest">
-<link rel="apple-touch-icon" href="icon.svg">
+<link rel="apple-touch-icon" href="icon-180.png">
 <link rel="icon" href="icon.svg">
+<script src="config.js"></script>
 <title>Траты</title>
 <style>
 :root{--bg:#0f1115;--card:#1a1d24;--line:#2a2e38;--tx:#f2f3f5;--mut:#8b90a0;--acc:#4f8cff;--red:#ff5d6c;--grn:#3ecf8e}
@@ -93,6 +94,14 @@ input,select{width:100%;background:var(--bg);color:var(--tx);border:1px solid va
   <label>Новая категория</label>
   <div style="display:flex;gap:8px"><input id="sEmoji" maxlength="2" placeholder="🙂" style="width:70px"><input id="sName" placeholder="Название"><button class="btn" id="sAdd" style="flex:0 0 auto">+</button></div>
   <label>Категории (нажми, чтобы удалить)</label><div class="cats" id="sCats"></div>
+  <label>Облачная синхронизация</label>
+  <div class="hint" id="syncStat" style="margin:0 2px 8px"></div>
+  <div id="authBox">
+    <input id="aEmail" type="email" autocomplete="email" placeholder="Email">
+    <input id="aPass" type="password" autocomplete="current-password" placeholder="Пароль (от 6 символов)" style="margin-top:8px">
+    <div class="row"><button id="aIn">Войти</button><button id="aUp">Регистрация</button></div>
+  </div>
+  <div id="outBox" class="row" style="display:none"><button id="aSync">Синхронизировать</button><button id="aOut">Выйти</button></div>
   <label>Ссылка для Apple Pay автоматизации</label>
   <input id="sLink" readonly>
   <div class="hint">Подставь в «Быстрые команды» → Автоматизация → Транзакция → «Открыть URL». Подробности в README.</div>
@@ -117,8 +126,16 @@ let S=load();
 let view=new Date(); view.setDate(1);
 let editId=null, selCat=null;
 
-function load(){try{const s=JSON.parse(localStorage.getItem(KEY));if(s&&s.tx)return s}catch(e){}return{tx:[],cats:DEF_CATS.map(([e,n])=>({e,n})),cur:'$'}}
-function save(){localStorage.setItem(KEY,JSON.stringify(S))}
+function load(){
+  let s=null;try{s=JSON.parse(localStorage.getItem(KEY))}catch(e){}
+  if(!(s&&s.tx))s={tx:[],cats:DEF_CATS.map(([e,n])=>({e,n})),cur:'$'};
+  const now=Date.now();
+  s.tx.forEach(t=>{if(!t.u){t.u=now;t.dirty=true}});
+  s.lastPull=s.lastPull||0;s.setU=s.setU||0;
+  return s}
+function persist(){localStorage.setItem(KEY,JSON.stringify(S))}
+function save(){persist();scheduleSync()}
+const touch=t=>{t.u=Date.now();t.dirty=true};
 const $=id=>document.getElementById(id);
 const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,6);
 const fmt=n=>n.toLocaleString('ru-RU',{minimumFractionDigits:2,maximumFractionDigits:2})+' '+S.cur;
@@ -131,7 +148,7 @@ function parseAmount(v){const n=parseFloat(String(v).replace(/\s/g,'').replace('
 function render(){
   $('month').textContent=view.toLocaleDateString('ru-RU',{month:'long',year:'numeric'});
   const ym=view.getFullYear()+'-'+String(view.getMonth()+1).padStart(2,'0');
-  const items=S.tx.filter(t=>t.date.startsWith(ym)).sort((a,b)=>b.date.localeCompare(a.date)||b.id.localeCompare(a.id));
+  const items=S.tx.filter(t=>!t.del&&t.date.startsWith(ym)).sort((a,b)=>b.date.localeCompare(a.date)||b.id.localeCompare(a.id));
   const total=items.reduce((s,t)=>s+t.amount,0);
   $('sum').textContent=fmt(total);
   const by={};items.forEach(t=>by[t.cat]=(by[t.cat]||0)+t.amount);
@@ -163,15 +180,15 @@ $('fSave').onclick=()=>{
   const amount=parseAmount($('fAmount').value);
   if(!(amount>0)){toast('Введи сумму');return}
   const rec={amount,note:$('fNote').value.trim(),cat:selCat,date:$('fDate').value||today()};
-  if(editId){Object.assign(S.tx.find(t=>t.id===editId),rec)}
-  else S.tx.push({id:uid(),src:pendingSrc||'manual',...rec});
+  if(editId){const t=S.tx.find(t=>t.id===editId);Object.assign(t,rec);touch(t)}
+  else S.tx.push({id:uid(),src:pendingSrc||'manual',...rec,u:Date.now(),dirty:true});
   pendingSrc=null;save();$('sheet').classList.remove('on');
   const d=new Date(rec.date+'T00:00');view=new Date(d.getFullYear(),d.getMonth(),1);render();
 };
 let pendingSrc=null;
 $('list').onclick=e=>{
   const d=e.target.closest('[data-del]');
-  if(d){if(confirm('Удалить трату?')){S.tx=S.tx.filter(t=>t.id!==d.dataset.del);save();render()}return}
+  if(d){if(confirm('Удалить трату?')){const t=S.tx.find(x=>x.id===d.dataset.del);t.del=true;touch(t);save();render()}return}
   const r=e.target.closest('.tx');if(r){const t=S.tx.find(x=>x.id===r.dataset.id);openSheet(t,t.id)}
 };
 $('prev').onclick=()=>{view=new Date(view.getFullYear(),view.getMonth()-1,1);render()};
@@ -213,13 +230,14 @@ function drawSet(){
   $('sCats').innerHTML=S.cats.map(c=>`<button data-n="${esc(c.n)}">${c.e} ${esc(c.n)} ✕</button>`).join('');
   $('sLink').value=location.origin+location.pathname+'#add?amount=AMOUNT&merchant=MERCHANT';
 }
-$('gear').onclick=()=>{drawSet();$('set').classList.add('on')};
-$('sClose').onclick=()=>{S.cur=$('sCur').value||'$';save();$('set').classList.remove('on');render()};
-$('sAdd').onclick=()=>{const n=$('sName').value.trim();if(!n||S.cats.some(c=>c.n===n))return;S.cats.push({e:$('sEmoji').value||'🔹',n});$('sName').value='';$('sEmoji').value='';save();drawSet()};
-$('sCats').onclick=e=>{const b=e.target.closest('button');if(!b)return;if(S.cats.length<=1)return;if(confirm('Удалить категорию «'+b.dataset.n+'»? Старые траты сохранятся.')){S.cats=S.cats.filter(c=>c.n!==b.dataset.n);save();drawSet()}};
+$('gear').onclick=()=>{drawSet();updSyncUI();$('set').classList.add('on')};
+const setTouch=()=>{S.setU=Date.now();S.setDirty=true};
+$('sClose').onclick=()=>{const c=$('sCur').value||'$';if(c!==S.cur){S.cur=c;setTouch()}save();$('set').classList.remove('on');render()};
+$('sAdd').onclick=()=>{const n=$('sName').value.trim();if(!n||S.cats.some(c=>c.n===n))return;S.cats.push({e:$('sEmoji').value||'🔹',n});setTouch();$('sName').value='';$('sEmoji').value='';save();drawSet()};
+$('sCats').onclick=e=>{const b=e.target.closest('button');if(!b)return;if(S.cats.length<=1)return;if(confirm('Удалить категорию «'+b.dataset.n+'»? Старые траты сохранятся.')){S.cats=S.cats.filter(c=>c.n!==b.dataset.n);setTouch();save();drawSet()}};
 $('exp').onclick=()=>{const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([JSON.stringify(S,null,1)],{type:'application/json'}));a.download='finance-backup-'+today()+'.json';a.click()};
 $('imp').onclick=()=>$('impFile').click();
-$('impFile').onchange=async e=>{const f=e.target.files[0];if(!f)return;try{const d=JSON.parse(await f.text());if(!d.tx||!d.cats)throw 0;if(confirm('Заменить текущие данные импортируемыми?')){S=d;save();drawSet();render()}}catch(_){toast('Неверный файл')}e.target.value=''};
+$('impFile').onchange=async e=>{const f=e.target.files[0];if(!f)return;try{const d=JSON.parse(await f.text());if(!d.tx||!d.cats)throw 0;if(confirm('Заменить текущие данные импортируемыми?')){S=d;S.lastPull=0;S.uid=user?user.id:undefined;S.tx.forEach(touch);setTouch();save();drawSet();render()}}catch(_){toast('Неверный файл')}e.target.value=''};
 
 // ---- Apple Pay / URL: #add?amount=12.5&merchant=Starbucks[&cat=Кафе][&date=2026-11-03]
 function handleHash(){
@@ -236,12 +254,95 @@ function handleHash(){
   }
   const cat=S.cats.some(c=>c.n===p.get('cat'))?p.get('cat'):guessCat(note);
   const date=/^\d{4}-\d{2}-\d{2}$/.test(p.get('date')||'')?p.get('date'):today();
-  S.tx.push({id:uid(),src:'applepay',amount:Math.abs(amount),note,cat,date});save();
+  S.tx.push({id:uid(),src:'applepay',amount:Math.abs(amount),note,cat,date,u:Date.now(),dirty:true});save();
   view=new Date(new Date(date+'T00:00').getFullYear(),new Date(date+'T00:00').getMonth(),1);
   render();toast('Записано: '+fmt(Math.abs(amount)));
 }
 window.addEventListener('hashchange',handleHash);
-render();handleHash();
+
+// ---- облачная синхронизация (Supabase): local-first, last-write-wins по полю u
+const CFG=window.FIN_CONFIG||{};
+let sb=null,user=null,syncing=false,again=false,syncT=null;
+const sbReady=()=>!!(CFG.url&&CFG.key);
+function loadSb(){return new Promise((res,rej)=>{if(window.supabase)return res();const s=document.createElement('script');s.src='https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js';s.onload=res;s.onerror=()=>rej(new Error('offline'));document.head.appendChild(s)})}
+function updSyncUI(msg){
+  const st=$('syncStat');if(!st)return;
+  if(!sbReady()){st.textContent='Облако не настроено (заполни config.js).';$('authBox').style.display='none';$('outBox').style.display='none';return}
+  $('authBox').style.display=user?'none':'';$('outBox').style.display=user?'flex':'none';
+  st.textContent=msg||(user?'Аккаунт: '+user.email:'Войди, чтобы синхронизировать устройства.');
+}
+async function initSync(){
+  updSyncUI();if(!sbReady())return;
+  try{await loadSb()}catch(e){updSyncUI('Нет сети — данные сохраняются локально.');return}
+  sb=window.supabase.createClient(CFG.url,CFG.key,{auth:{persistSession:true,autoRefreshToken:true,storageKey:'fin.auth'}});
+  const {data}=await sb.auth.getSession();user=data.session?data.session.user:null;
+  sb.auth.onAuthStateChange((_e,s)=>{user=s?s.user:null;updSyncUI();if(user)sync()});
+  updSyncUI();if(user)sync();
+}
+function scheduleSync(){clearTimeout(syncT);syncT=setTimeout(sync,800)}
+async function sync(){
+  if(!sb||!user||!navigator.onLine)return;
+  if(syncing){again=true;return}
+  syncing=true;updSyncUI('Синхронизация…');
+  try{
+    if(S.uid&&S.uid!==user.id){
+      if(!confirm('Это другой аккаунт. Заменить данные на устройстве данными этого аккаунта?')){await sb.auth.signOut();return}
+      S.tx=[];S.lastPull=0;S.setU=0;S.setDirty=false;
+    }
+    S.uid=user.id;
+    // настройки (категории, валюта)
+    const {data:sr,error:se}=await sb.from('settings').select('data,u').maybeSingle();
+    if(se)throw se;
+    if(sr&&sr.u>(S.setU||0)){S.cats=(sr.data&&sr.data.cats)||S.cats;S.cur=(sr.data&&sr.data.cur)||S.cur;S.setU=Number(sr.u);S.setDirty=false}
+    else if(!sr||S.setDirty){
+      const u=S.setU||Date.now();
+      const {error}=await sb.from('settings').upsert({user_id:user.id,data:{cats:S.cats,cur:S.cur},u});
+      if(error)throw error;
+      S.setU=u;S.setDirty=false;
+    }
+    // отправка изменённых трат
+    const dirty=S.tx.filter(t=>t.dirty);
+    for(let i=0;i<dirty.length;i+=200){
+      const chunk=dirty.slice(i,i+200);
+      const sent=new Map(chunk.map(t=>[t.id,t.u]));
+      const {error}=await sb.from('transactions').upsert(chunk.map(t=>({id:t.id,user_id:user.id,amount:t.amount,note:t.note||'',cat:t.cat,date:t.date,src:t.src||'manual',deleted:!!t.del,u:t.u})));
+      if(error)throw error;
+      chunk.forEach(t=>{if(t.u===sent.get(t.id))delete t.dirty});
+    }
+    // получение новых изменений
+    for(;;){
+      const {data:rows,error}=await sb.from('transactions').select('*').gt('u',S.lastPull).order('u').limit(1000);
+      if(error)throw error;
+      for(const r of rows){
+        const n={id:r.id,amount:Number(r.amount),note:r.note||'',cat:r.cat,date:r.date,src:r.src,u:Number(r.u),del:r.deleted||undefined};
+        const t=S.tx.find(x=>x.id===r.id);
+        if(!t)S.tx.push(n);else if(n.u>t.u){Object.assign(t,n);delete t.dirty}
+        S.lastPull=Math.max(S.lastPull,n.u);
+      }
+      if(rows.length<1000)break;
+    }
+    persist();render();
+    updSyncUI('Синхронизировано '+new Date().toLocaleTimeString('ru-RU',{hour:'2-digit',minute:'2-digit'}));
+  }catch(e){updSyncUI('Ошибка синхронизации: '+(e.message||e))}
+  finally{syncing=false;if(again){again=false;scheduleSync()}}
+}
+async function authDo(kind){
+  if(!sb)return toast('Нет соединения');
+  const email=$('aEmail').value.trim(),password=$('aPass').value;
+  if(!email||password.length<6)return toast('Email и пароль от 6 символов');
+  const {data,error}=await(kind==='up'?sb.auth.signUp({email,password}):sb.auth.signInWithPassword({email,password}));
+  if(error)return toast(error.message);
+  if(kind==='up'&&!data.session)return toast('Проверь почту и подтверди email');
+  $('aPass').value='';
+}
+$('aIn').onclick=()=>authDo('in');
+$('aUp').onclick=()=>authDo('up');
+$('aSync').onclick=()=>sync();
+$('aOut').onclick=async()=>{if(sb)await sb.auth.signOut();user=null;updSyncUI()};
+window.addEventListener('online',sync);
+document.addEventListener('visibilitychange',()=>{if(!document.hidden)sync()});
+
+render();handleHash();initSync();
 if('serviceWorker'in navigator)navigator.serviceWorker.register('sw.js').catch(()=>{});
 </script>
 </body>
