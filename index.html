@@ -3,7 +3,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="theme-color" content="#0f1115">
+<meta name="theme-color" content="#0a0b0d" media="(prefers-color-scheme: dark)">
+<meta name="theme-color" content="#f4f3ef" media="(prefers-color-scheme: light)">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Траты">
@@ -13,108 +14,217 @@
 <script src="config.js"></script>
 <title>Траты</title>
 <style>
-:root{--bg:#0f1115;--card:#1a1d24;--line:#2a2e38;--tx:#f2f3f5;--mut:#8b90a0;--acc:#4f8cff;--red:#ff5d6c;--grn:#3ecf8e}
-@media(prefers-color-scheme:light){:root{--bg:#f4f5f8;--card:#fff;--line:#e3e5ec;--tx:#14161c;--mut:#6b7080}}
+:root{color-scheme:dark light;--bg:#0a0b0d;--s1:#14161a;--s2:#1d2026;--line:rgba(255,255,255,.07);--tx:#f4f4f1;--mut:#868b95;--acc:#d6ff4a;--on:#0a0b0d;--danger:#ff6b6b;--shadow:0 12px 34px rgba(0,0,0,.45)}
+@media(prefers-color-scheme:light){:root{--bg:#f4f3ef;--s1:#fff;--s2:#ebeae5;--line:rgba(0,0,0,.08);--tx:#15171b;--mut:#737882;--acc:#15171b;--on:#fff;--danger:#e5484d;--shadow:0 12px 34px rgba(20,22,27,.18)}}
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
-body{margin:0;background:var(--bg);color:var(--tx);font:16px/1.4 -apple-system,system-ui,Segoe UI,Roboto,sans-serif;padding:env(safe-area-inset-top) 0 calc(96px + env(safe-area-inset-bottom))}
-.wrap{max-width:560px;margin:0 auto;padding:12px 16px}
-.top{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}
-.top button{background:none;border:0;color:var(--tx);font-size:22px;padding:8px 12px;cursor:pointer}
-.month{font-weight:600;font-size:18px;text-transform:capitalize}
-.total{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:18px;margin-bottom:12px}
-.total small{color:var(--mut)}
-.total .sum{font-size:34px;font-weight:700;letter-spacing:-.5px}
-.bars{margin-top:12px;display:grid;gap:8px}
-.bar{display:grid;grid-template-columns:28px 1fr auto;gap:8px;align-items:center;font-size:14px}
-.bar .t{height:8px;background:var(--line);border-radius:4px;overflow:hidden}
-.bar .t i{display:block;height:100%;background:var(--acc);border-radius:4px}
-.bar span:last-child{color:var(--mut);min-width:70px;text-align:right}
-h3{margin:18px 4px 8px;font-size:13px;color:var(--mut);font-weight:600;text-transform:uppercase;letter-spacing:.5px}
-.tx{display:grid;grid-template-columns:40px 1fr auto;gap:10px;align-items:center;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:10px 12px;margin-bottom:6px}
-.tx .ic{font-size:24px;text-align:center}
-.tx .n{font-weight:500}
-.tx .m{font-size:12px;color:var(--mut)}
-.tx .a{font-weight:600;text-align:right}
-.tx .x{display:block;background:none;border:0;color:var(--mut);font-size:12px;padding:2px 0 0;margin-left:auto;cursor:pointer}
-.empty{text-align:center;color:var(--mut);padding:40px 0}
-.fab{position:fixed;right:20px;bottom:calc(20px + env(safe-area-inset-bottom));display:flex;gap:10px}
-.fab button{border:0;border-radius:28px;height:56px;padding:0 20px;font-size:16px;font-weight:600;cursor:pointer;box-shadow:0 6px 20px rgba(0,0,0,.35)}
-.fab .add{background:var(--acc);color:#fff;font-size:26px;width:56px;padding:0}
-.fab .scan{background:var(--card);color:var(--tx);border:1px solid var(--line)}
-.sheet{position:fixed;inset:0;background:rgba(0,0,0,.55);display:none;align-items:flex-end;z-index:10}
-.sheet.on{display:flex}
-.panel{background:var(--card);width:100%;max-width:560px;margin:0 auto;border-radius:22px 22px 0 0;padding:18px 16px calc(18px + env(safe-area-inset-bottom));max-height:90vh;overflow:auto}
-.panel h2{margin:0 0 12px;font-size:18px}
-label{display:block;font-size:12px;color:var(--mut);margin:10px 2px 4px}
-input,select{width:100%;background:var(--bg);color:var(--tx);border:1px solid var(--line);border-radius:12px;padding:12px;font-size:16px}
-.cats{display:flex;flex-wrap:wrap;gap:6px}
-.cats button{background:var(--bg);color:var(--tx);border:1px solid var(--line);border-radius:20px;padding:8px 12px;font-size:14px;cursor:pointer}
-.cats button.on{background:var(--acc);border-color:var(--acc);color:#fff}
-.row{display:flex;gap:8px;margin-top:14px}
-.row button,.btn{flex:1;border:0;border-radius:12px;padding:13px;font-size:16px;font-weight:600;cursor:pointer;background:var(--bg);color:var(--tx);border:1px solid var(--line)}
-.row .pri{background:var(--acc);color:#fff;border-color:var(--acc)}
-.hint{font-size:12px;color:var(--mut);margin-top:6px;word-break:break-all}
-.gear{position:fixed;top:calc(8px + env(safe-area-inset-top));right:8px}
-#toast{position:fixed;left:50%;top:calc(14px + env(safe-area-inset-top));transform:translateX(-50%);background:var(--grn);color:#04210f;padding:10px 16px;border-radius:20px;font-weight:600;display:none;z-index:20}
+html{background:var(--bg)}
+body{margin:0;background:var(--bg);color:var(--tx);font:16px/1.4 -apple-system,BlinkMacSystemFont,"SF Pro Display","Inter","Segoe UI",Roboto,sans-serif;font-variant-numeric:tabular-nums;-webkit-font-smoothing:antialiased;min-height:100vh}
+button,input{font:inherit;color:inherit}
+button{cursor:pointer;border:0;background:none;padding:0}
+svg.i{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;flex:none}
+[hidden]{display:none!important}
+
+/* ---------- app ---------- */
+.wrap{max-width:560px;margin:0 auto;padding:calc(10px + env(safe-area-inset-top)) 18px calc(150px + env(safe-area-inset-bottom))}
+.bar{display:flex;align-items:center;justify-content:space-between;height:48px}
+.ico{width:44px;height:44px;border-radius:50%;display:grid;place-items:center;color:var(--mut);transition:.15s}
+.ico:active{background:var(--s2);color:var(--tx)}
+.month{display:flex;align-items:center;gap:2px}
+.month b{font-weight:600;font-size:15px;min-width:132px;text-align:center;text-transform:capitalize;letter-spacing:.01em}
+.hero{padding:26px 2px 22px}
+.hero .lbl{color:var(--mut);font-size:14px;letter-spacing:.02em}
+.amount{font-size:56px;line-height:1.05;font-weight:650;letter-spacing:-.035em;margin-top:6px;white-space:nowrap}
+.amount small{font-size:28px;color:var(--mut);font-weight:550;letter-spacing:-.02em}
+.amount em{font-style:normal;font-size:28px;color:var(--mut);font-weight:550;margin-left:6px}
+.delta{display:inline-flex;margin-top:12px;padding:5px 11px;border-radius:20px;background:var(--s1);border:1px solid var(--line);font-size:13px;color:var(--mut)}
+.delta b{color:var(--tx);font-weight:600;margin-right:5px}
+.split{display:flex;gap:3px;height:10px;margin:22px 0 14px}
+.split i{display:block;border-radius:5px;min-width:6px;transition:flex .4s}
+.card{background:var(--s1);border-radius:22px;border:1px solid var(--line);overflow:hidden}
+.crow{display:flex;align-items:center;gap:12px;padding:13px 16px;font-size:15px}
+.crow+.crow{border-top:1px solid var(--line)}
+.crow .dot{width:10px;height:10px;border-radius:50%;background:var(--c);flex:none}
+.crow .n{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.crow .p{color:var(--mut);font-size:13px;min-width:38px;text-align:right}
+.crow .v{font-weight:600;min-width:84px;text-align:right}
+.sec{display:flex;justify-content:space-between;align-items:baseline;margin:30px 4px 10px;color:var(--mut);font-size:13px;letter-spacing:.02em}
+.sec b{font-weight:500;color:var(--tx);font-size:14px}
+.tx{display:flex;align-items:center;gap:13px;width:100%;text-align:left;padding:12px 16px;transition:background .15s}
+.tx+.tx{border-top:1px solid var(--line)}
+.tx:active{background:var(--s2)}
+.gl{width:42px;height:42px;border-radius:14px;display:grid;place-items:center;font-weight:650;font-size:17px;color:var(--c);background:color-mix(in srgb,var(--c) 15%,transparent);flex:none}
+.tx .mid{flex:1;min-width:0}
+.tx .mid b{display:block;font-weight:550;font-size:16px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tx .mid i{display:block;font-style:normal;font-size:13px;color:var(--mut);margin-top:1px}
+.tx .amt{font-weight:600;font-size:16px;white-space:nowrap}
+.tx .amt small{color:var(--mut);font-weight:500}
+.empty{text-align:center;color:var(--mut);padding:56px 0 20px;font-size:15px;line-height:1.6}
+.empty b{display:block;color:var(--tx);font-size:18px;font-weight:600;margin-bottom:4px}
+.fade{position:fixed;left:0;right:0;bottom:0;height:150px;background:linear-gradient(transparent,var(--bg) 70%);pointer-events:none;z-index:5}
+.dock{position:fixed;left:0;right:0;bottom:calc(16px + env(safe-area-inset-bottom));display:flex;justify-content:center;gap:10px;z-index:6;pointer-events:none}
+.dock button{pointer-events:auto;height:58px;display:flex;align-items:center;justify-content:center;gap:9px;box-shadow:var(--shadow);transition:transform .12s}
+.dock button:active{transform:scale(.96)}
+.b-add{padding:0 26px 0 22px;border-radius:29px;background:var(--acc);color:var(--on);font-weight:650;font-size:17px}
+.b-cam{width:58px;border-radius:50%;background:var(--s2);color:var(--tx);border:1px solid var(--line)}
+
+/* ---------- sheets ---------- */
+.sheet{position:fixed;inset:0;z-index:30;display:flex;align-items:flex-end;background:rgba(0,0,0,.5);visibility:hidden;opacity:0;transition:opacity .2s,visibility .2s;-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px)}
+.sheet.on{visibility:visible;opacity:1}
+.panel{width:100%;max-width:560px;margin:0 auto;background:var(--bg);border-radius:28px 28px 0 0;border:1px solid var(--line);border-bottom:0;padding:10px 20px calc(22px + env(safe-area-inset-bottom));max-height:92vh;overflow:auto;transform:translateY(30px);transition:transform .28s cubic-bezier(.2,.8,.2,1)}
+.sheet.on .panel{transform:none}
+.grab{width:38px;height:5px;border-radius:3px;background:var(--line);margin:0 auto 14px;background:color-mix(in srgb,var(--mut) 40%,transparent)}
+.panel h2{margin:4px 0 14px;font-size:20px;font-weight:650;letter-spacing:-.01em}
+.big{display:flex;align-items:baseline;justify-content:center;gap:8px;padding:18px 0 14px}
+.big input{width:100%;max-width:260px;background:none;border:0;outline:0;text-align:center;font-size:52px;font-weight:650;letter-spacing:-.035em;padding:0}
+.big input::placeholder{color:var(--s2)}
+.big span{font-size:28px;color:var(--mut);font-weight:550}
+.field{display:block;margin-top:12px}
+.field>span{display:block;font-size:12px;color:var(--mut);margin:0 4px 6px;letter-spacing:.03em;text-transform:uppercase}
+input.in{width:100%;background:var(--s1);border:1px solid var(--line);border-radius:16px;padding:14px 16px;font-size:16px;outline:0;transition:border-color .15s}
+input.in:focus{border-color:var(--mut)}
+.chips{display:flex;flex-wrap:wrap;gap:8px}
+.chip{display:inline-flex;align-items:center;gap:8px;padding:9px 14px;border-radius:20px;background:var(--s1);border:1px solid var(--line);font-size:14px;transition:.15s}
+.chip i{width:9px;height:9px;border-radius:50%;background:var(--c)}
+.chip.on{background:var(--tx);color:var(--bg);border-color:var(--tx)}
+.chip.on i{box-shadow:0 0 0 2px var(--bg)}
+.hint{font-size:13px;color:var(--mut);margin:10px 4px 0}
+.btns{display:flex;gap:10px;margin-top:20px}
+.btn{flex:1;height:52px;border-radius:26px;background:var(--s2);font-weight:600;font-size:16px}
+.btn.pri{background:var(--acc);color:var(--on)}
+.btn.del{background:none;color:var(--danger);flex:0 0 auto;padding:0 18px}
+.btn:disabled{opacity:.5}
+.set h3{margin:26px 4px 10px;font-size:12px;font-weight:600;color:var(--mut);letter-spacing:.05em;text-transform:uppercase}
+.set .card .crow{padding:12px 16px}
+.set .crow .x{color:var(--mut);width:30px;height:30px;display:grid;place-items:center;border-radius:50%}
+.set .crow .x svg{width:16px;height:16px}
+.set .crow .x:active{background:var(--s2)}
+.kv{display:flex;justify-content:space-between;gap:14px;padding:13px 16px;font-size:15px;align-items:center}
+.kv+.kv{border-top:1px solid var(--line)}
+.kv span{color:var(--mut);white-space:nowrap}
+.kv b{font-weight:500;min-width:0;overflow:hidden;text-overflow:ellipsis;text-align:right}
+.lnk{display:block;width:100%;text-align:left;padding:14px 16px;font-size:15px;font-weight:550}
+.lnk+.lnk,.kv+.lnk{border-top:1px solid var(--line)}
+.lnk.red{color:var(--danger)}
+.sw{display:flex;gap:10px;flex-wrap:wrap;margin:12px 4px 0}
+.sw button{width:28px;height:28px;border-radius:50%;background:var(--c);box-shadow:0 0 0 2px var(--bg)}
+.sw button.on{box-shadow:0 0 0 2px var(--bg),0 0 0 4px var(--tx)}
+.row2{display:flex;gap:8px;margin-top:10px}
+.row2 .in{flex:1}
+.row2 .btn{flex:0 0 auto;height:48px;padding:0 18px}
+
+/* ---------- auth ---------- */
+.auth{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:calc(30px + env(safe-area-inset-top)) 24px calc(30px + env(safe-area-inset-bottom))}
+.auth-in{width:100%;max-width:380px}
+.brand{font-size:44px;font-weight:700;letter-spacing:-.04em}
+.brand::after{content:"";display:inline-block;width:10px;height:10px;border-radius:50%;background:var(--acc);margin-left:6px;vertical-align:baseline}
+.tag{color:var(--mut);margin:6px 0 30px}
+.tabs{display:flex;background:var(--s1);border:1px solid var(--line);border-radius:16px;padding:4px;margin-bottom:6px}
+.tabs button{flex:1;height:40px;border-radius:12px;font-weight:600;font-size:15px;color:var(--mut);transition:.15s}
+.tabs button.on{background:var(--s2);color:var(--tx)}
+.err{min-height:20px;margin:12px 4px 0;font-size:14px;color:var(--danger)}
+.ok{color:var(--mut)}
+.auth .btn{width:100%;flex:none;margin-top:8px}
+#toast{position:fixed;left:50%;top:calc(12px + env(safe-area-inset-top));transform:translate(-50%,-16px);background:var(--tx);color:var(--bg);padding:11px 18px;border-radius:22px;font-weight:600;font-size:14px;z-index:60;opacity:0;pointer-events:none;transition:.25s;white-space:nowrap;max-width:92vw;overflow:hidden;text-overflow:ellipsis}
+#toast.on{opacity:1;transform:translate(-50%,0)}
 </style>
 </head>
 <body>
-<div class="wrap">
-  <div class="top">
-    <button id="prev">‹</button>
-    <div class="month" id="month"></div>
-    <button id="next">›</button>
+
+<!-- ===== вход / регистрация ===== -->
+<div id="auth" class="auth" hidden>
+  <div class="auth-in">
+    <div class="brand">Траты</div>
+    <p class="tag">Личный учёт финансов</p>
+    <div class="tabs"><button type="button" data-m="in" class="on">Вход</button><button type="button" data-m="up">Регистрация</button></div>
+    <form id="aForm" novalidate>
+      <label class="field"><span>Email</span><input class="in" id="aEmail" type="email" autocomplete="email" inputmode="email" autocapitalize="off"></label>
+      <label class="field"><span>Пароль</span><input class="in" id="aPass" type="password" autocomplete="current-password" placeholder="Минимум 6 символов"></label>
+      <label class="field" id="aCodeRow" hidden><span>Код доступа</span><input class="in" id="aCode" type="text" autocomplete="off" autocapitalize="off" spellcheck="false"></label>
+      <div class="err" id="aErr"></div>
+      <button class="btn pri" id="aGo" type="submit">Войти</button>
+    </form>
   </div>
-  <div class="total"><small>Потрачено за месяц</small><div class="sum" id="sum">0</div><div class="bars" id="bars"></div></div>
-  <h3>Операции</h3>
-  <div id="list"></div>
 </div>
 
-<div class="fab">
-  <button class="scan" id="scan">📷 Чек</button>
-  <button class="add" id="addBtn">+</button>
-</div>
-<input type="file" id="file" accept="image/*" capture="environment" hidden>
-
-<!-- add/edit sheet -->
-<div class="sheet" id="sheet"><div class="panel">
-  <h2 id="sheetTitle">Новая трата</h2>
-  <label>Сумма</label><input id="fAmount" inputmode="decimal" placeholder="0.00">
-  <label>Название / магазин</label><input id="fNote" placeholder="Например, Пятёрочка">
-  <label>Категория</label><div class="cats" id="fCats"></div>
-  <label>Дата</label><input id="fDate" type="date">
-  <div class="hint" id="ocrHint"></div>
-  <div class="row"><button id="fCancel">Отмена</button><button class="pri" id="fSave">Сохранить</button></div>
-</div></div>
-
-<!-- settings sheet -->
-<div class="sheet" id="set"><div class="panel">
-  <h2>Настройки</h2>
-  <label>Валюта (символ)</label><input id="sCur" maxlength="4">
-  <label>Новая категория</label>
-  <div style="display:flex;gap:8px"><input id="sEmoji" maxlength="2" placeholder="🙂" style="width:70px"><input id="sName" placeholder="Название"><button class="btn" id="sAdd" style="flex:0 0 auto">+</button></div>
-  <label>Категории (нажми, чтобы удалить)</label><div class="cats" id="sCats"></div>
-  <label>Облачная синхронизация</label>
-  <div class="hint" id="syncStat" style="margin:0 2px 8px"></div>
-  <div id="authBox">
-    <input id="aEmail" type="email" autocomplete="email" placeholder="Email">
-    <input id="aPass" type="password" autocomplete="current-password" placeholder="Пароль (от 6 символов)" style="margin-top:8px">
-    <div class="row"><button id="aIn">Войти</button><button id="aUp">Регистрация</button></div>
+<!-- ===== приложение ===== -->
+<div id="app">
+  <div class="wrap">
+    <div class="bar">
+      <div class="month">
+        <button class="ico" id="prev" aria-label="Предыдущий месяц"><svg class="i" viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg></button>
+        <b id="month"></b>
+        <button class="ico" id="next" aria-label="Следующий месяц"><svg class="i" viewBox="0 0 24 24"><path d="M9 5l7 7-7 7"/></svg></button>
+      </div>
+      <button class="ico" id="gear" aria-label="Настройки"><svg class="i" viewBox="0 0 24 24"><path d="M4 7h10M18 7h2M4 17h2M10 17h10"/><circle cx="16" cy="7" r="2"/><circle cx="8" cy="17" r="2"/></svg></button>
+    </div>
+    <div class="hero">
+      <div class="lbl">Потрачено за месяц</div>
+      <div class="amount" id="sum"></div>
+      <div id="delta"></div>
+    </div>
+    <div id="split" class="split"></div>
+    <div id="cats" class="card"></div>
+    <div class="sec"><b>Операции</b><span id="count"></span></div>
+    <div id="list"></div>
   </div>
-  <div id="outBox" class="row" style="display:none"><button id="aSync">Синхронизировать</button><button id="aOut">Выйти</button></div>
-  <label>Ссылка для Apple Pay автоматизации</label>
-  <input id="sLink" readonly>
-  <div class="hint">Подставь в «Быстрые команды» → Автоматизация → Транзакция → «Открыть URL». Подробности в README.</div>
-  <div class="row"><button id="exp">Экспорт</button><button id="imp">Импорт</button></div>
-  <input type="file" id="impFile" accept="application/json" hidden>
-  <div class="row"><button class="pri" id="sClose">Готово</button></div>
-</div></div>
-<button class="top gear" id="gear" style="background:none;border:0;font-size:22px;color:var(--tx)">⚙︎</button>
+  <div class="fade"></div>
+  <div class="dock">
+    <button class="b-cam" id="scan" aria-label="Сфотографировать чек"><svg class="i" viewBox="0 0 24 24"><path d="M4 8h3l1.5-2h7L17 8h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></svg></button>
+    <button class="b-add" id="addBtn"><svg class="i" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>Добавить</button>
+  </div>
+  <input type="file" id="file" accept="image/*" capture="environment" hidden>
+
+  <!-- добавить / править -->
+  <div class="sheet" id="sheet"><div class="panel">
+    <div class="grab"></div>
+    <h2 id="sheetTitle">Новая трата</h2>
+    <div class="big"><input id="fAmount" inputmode="decimal" placeholder="0" autocomplete="off"><span id="fCur">$</span></div>
+    <label class="field"><span>Название</span><input class="in" id="fNote" placeholder="Например, Пятёрочка"></label>
+    <div class="field"><span>Категория</span><div class="chips" id="fCats"></div></div>
+    <label class="field"><span>Дата</span><input class="in" id="fDate" type="date"></label>
+    <div class="hint" id="ocrHint"></div>
+    <div class="btns"><button class="btn del" id="fDel" hidden>Удалить</button><button class="btn" id="fCancel">Отмена</button><button class="btn pri" id="fSave">Сохранить</button></div>
+  </div></div>
+
+  <!-- настройки -->
+  <div class="sheet" id="set"><div class="panel set">
+    <div class="grab"></div>
+    <h2>Настройки</h2>
+
+    <div id="acct">
+      <h3>Аккаунт</h3>
+      <div class="card">
+        <div class="kv"><span>Email</span><b id="acEmail"></b></div>
+        <div class="kv"><span>Синхронизация</span><b id="syncStat"></b></div>
+        <button class="lnk" id="aSync">Синхронизировать сейчас</button>
+        <button class="lnk red" id="aOut">Выйти</button>
+      </div>
+    </div>
+
+    <h3>Валюта</h3>
+    <input class="in" id="sCur" maxlength="4" aria-label="Символ валюты">
+
+    <h3>Категории</h3>
+    <div class="card" id="sCats"></div>
+    <div class="row2"><input class="in" id="sName" placeholder="Новая категория"><button class="btn pri" id="sAdd">Добавить</button></div>
+    <div class="sw" id="sSw"></div>
+
+    <h3>Apple Pay</h3>
+    <div class="card"><div class="kv"><span>Ссылка</span><b id="sLinkTxt"></b></div><button class="lnk" id="sCopy">Скопировать ссылку для «Команд»</button></div>
+
+    <h3>Данные</h3>
+    <div class="card"><button class="lnk" id="exp">Экспорт в файл</button><button class="lnk" id="imp">Импорт из файла</button></div>
+    <input type="file" id="impFile" accept="application/json" hidden>
+
+    <div class="btns"><button class="btn pri" id="sClose">Готово</button></div>
+  </div></div>
+</div>
 <div id="toast"></div>
 
 <script>
 const KEY='fin.v1';
-const DEF_CATS=[['🛒','Продукты'],['🍽️','Кафе и рестораны'],['🚕','Транспорт'],['🏠','Жильё'],['💊','Здоровье'],['🎬','Развлечения'],['👕','Одежда'],['📱','Связь и подписки'],['🎁','Подарки'],['📦','Другое']];
+const PALETTE=['#4fd1a5','#ff8a5b','#6aa6ff','#b69cff','#ff6b8b','#f5c451','#e58ad9','#5ed0e6','#9bd45b','#9aa3b2'];
+const DEF_CATS=[['Продукты','#4fd1a5'],['Кафе и рестораны','#ff8a5b'],['Транспорт','#6aa6ff'],['Жильё','#b69cff'],['Здоровье','#ff6b8b'],['Развлечения','#f5c451'],['Одежда','#e58ad9'],['Связь и подписки','#5ed0e6'],['Подарки','#9bd45b'],['Другое','#9aa3b2']];
 const RULES={'Продукты':/пятёрочка|пятерочка|магнит|перекрёсток|перекресток|лента|дикси|вкусвилл|ашан|market|grocery|supermarket|spar|lidl|aldi|tesco|walmart|costco/i,
 'Кафе и рестораны':/кафе|ресторан|coffee|кофе|starbucks|mcdonald|burger|kfc|pizza|пицц|sushi|суши|bar\b|бар\b|cafe|restaurant/i,
 'Транспорт':/taxi|такси|uber|bolt|яндекс.?go|metro|метро|азс|fuel|shell|bp\b|lukoil|парков|parking|rail|ржд/i,
@@ -122,13 +232,18 @@ const RULES={'Продукты':/пятёрочка|пятерочка|магн�
 'Связь и подписки':/netflix|spotify|apple\.com|icloud|google|youtube|мтс|билайн|мегафон|tele2|yota|subscription/i,
 'Развлечения':/cinema|кино|steam|playstation|xbox|театр|concert/i,
 'Одежда':/zara|h&m|uniqlo|wildberries|lamoda|nike|adidas|одежд/i};
+const normCats=a=>(a||[]).map((c,i)=>({n:c.n,c:c.c||(DEF_CATS.find(d=>d[0]===c.n)||[])[1]||PALETTE[i%PALETTE.length]}));
+const $=id=>document.getElementById(id);
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+
 let S=load();
 let view=new Date(); view.setDate(1);
-let editId=null, selCat=null;
+let editId=null, selCat=null, pendingSrc=null, newColor=PALETTE[0];
 
 function load(){
   let s=null;try{s=JSON.parse(localStorage.getItem(KEY))}catch(e){}
-  if(!(s&&s.tx))s={tx:[],cats:DEF_CATS.map(([e,n])=>({e,n})),cur:'$'};
+  if(!(s&&s.tx))s={tx:[],cats:DEF_CATS.map(([n,c])=>({n,c})),cur:'$'};
+  s.cats=normCats(s.cats);
   const now=Date.now();
   s.tx.forEach(t=>{if(!t.u){t.u=now;t.dirty=true}});
   s.lastPull=s.lastPull||0;s.setU=s.setU||0;
@@ -136,70 +251,94 @@ function load(){
 function persist(){localStorage.setItem(KEY,JSON.stringify(S))}
 function save(){persist();scheduleSync()}
 const touch=t=>{t.u=Date.now();t.dirty=true};
-const $=id=>document.getElementById(id);
+const setTouch=()=>{S.setU=Date.now();S.setDirty=true};
 const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,6);
-const fmt=n=>n.toLocaleString('ru-RU',{minimumFractionDigits:2,maximumFractionDigits:2})+' '+S.cur;
-const catIcon=n=>(S.cats.find(c=>c.n===n)||{e:'📦'}).e;
+const catColor=n=>(S.cats.find(c=>c.n===n)||{c:'#9aa3b2'}).c;
 const today=()=>new Date(Date.now()-new Date().getTimezoneOffset()*6e4).toISOString().slice(0,10);
-function toast(t){const e=$('toast');e.textContent=t;e.style.display='block';setTimeout(()=>e.style.display='none',2200)}
-function guessCat(text){for(const [c,re] of Object.entries(RULES)){if(re.test(text||'')&&S.cats.some(x=>x.n===c))return c}return S.cats.some(x=>x.n==='Другое')?'Другое':S.cats[S.cats.length-1]?.n}
+const numParts=n=>{const [i,d]=Math.abs(n).toFixed(2).split('.');return[i.replace(/\B(?=(\d{3})+(?!\d))/g,' '),d]};
+const fmt=n=>{const[i,d]=numParts(n);return i+','+d+' '+S.cur};
+const moneyHtml=n=>{const[i,d]=numParts(n);return `${i}<small>,${d}</small>`};
+let toastT;
+function toast(t){const e=$('toast');e.textContent=t;e.classList.add('on');clearTimeout(toastT);toastT=setTimeout(()=>e.classList.remove('on'),2400)}
+function guessCat(text){for(const [c,re] of Object.entries(RULES)){if(re.test(text||'')&&S.cats.some(x=>x.n===c))return c}return S.cats.some(x=>x.n==='Другое')?'Другое':(S.cats[S.cats.length-1]||{}).n}
 function parseAmount(v){const n=parseFloat(String(v).replace(/\s/g,'').replace(',','.'));return isFinite(n)?n:NaN}
+const ymOf=d=>d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0');
+function dayLabel(iso){
+  const d=new Date(iso+'T00:00'),t=new Date(today()+'T00:00'),diff=Math.round((t-d)/864e5);
+  if(diff===0)return'Сегодня';if(diff===1)return'Вчера';
+  return d.toLocaleDateString('ru-RU',{weekday:'long',day:'numeric',month:'long'});
+}
 
+// ---------- отрисовка ----------
 function render(){
   $('month').textContent=view.toLocaleDateString('ru-RU',{month:'long',year:'numeric'});
-  const ym=view.getFullYear()+'-'+String(view.getMonth()+1).padStart(2,'0');
-  const items=S.tx.filter(t=>!t.del&&t.date.startsWith(ym)).sort((a,b)=>b.date.localeCompare(a.date)||b.id.localeCompare(a.id));
+  const ym=ymOf(view),prev=ymOf(new Date(view.getFullYear(),view.getMonth()-1,1));
+  const live=S.tx.filter(t=>!t.del);
+  const items=live.filter(t=>t.date.startsWith(ym)).sort((a,b)=>b.date.localeCompare(a.date)||b.u-a.u);
   const total=items.reduce((s,t)=>s+t.amount,0);
-  $('sum').textContent=fmt(total);
+  const prevTotal=live.filter(t=>t.date.startsWith(prev)).reduce((s,t)=>s+t.amount,0);
+  $('sum').innerHTML=moneyHtml(total)+'<em>'+esc(S.cur)+'</em>';
+  if(prevTotal>0&&total>0){const p=Math.round((total-prevTotal)/prevTotal*100);$('delta').innerHTML=`<span class="delta"><b>${p>0?'+':p<0?'−':''}${Math.abs(p)}%</b>к прошлому месяцу</span>`}
+  else $('delta').innerHTML='';
   const by={};items.forEach(t=>by[t.cat]=(by[t.cat]||0)+t.amount);
-  const max=Math.max(0,...Object.values(by));
-  $('bars').innerHTML=Object.entries(by).sort((a,b)=>b[1]-a[1]).map(([c,v])=>`<div class="bar"><span>${catIcon(c)}</span><div class="t"><i style="width:${max?v/max*100:0}%"></i></div><span>${fmt(v)}</span></div>`).join('');
-  if(!items.length){$('list').innerHTML='<div class="empty">Пока пусто.<br>Нажми + или сфотографируй чек.</div>';return}
-  let lastDay='',h='';
+  const ents=Object.entries(by).sort((a,b)=>b[1]-a[1]);
+  $('split').style.display=ents.length?'flex':'none';
+  $('cats').style.display=ents.length?'block':'none';
+  $('split').innerHTML=ents.map(([c,v])=>`<i style="flex:${v};background:${catColor(c)}"></i>`).join('');
+  $('cats').innerHTML=ents.map(([c,v])=>`<div class="crow" style="--c:${catColor(c)}"><span class="dot"></span><span class="n">${esc(c)}</span><span class="p">${Math.round(v/total*100)}%</span><span class="v">${fmt(v)}</span></div>`).join('');
+  $('count').textContent=items.length?items.length+' '+(items.length%10===1&&items.length%100!==11?'запись':(items.length%10>=2&&items.length%10<=4&&(items.length%100<10||items.length%100>=20)?'записи':'записей')):'';
+  if(!items.length){$('list').innerHTML='<div class="empty"><b>Пока пусто</b>Нажми «Добавить» или сфотографируй чек.</div>';return}
+  let h='',cur='',dayTot=0,buf='';
+  const flush=()=>{if(cur)h+=`<div class="sec" style="margin-top:22px"><b>${esc(dayLabel(cur))}</b><span>${fmt(dayTot)}</span></div><div class="card">${buf}</div>`;buf='';dayTot=0};
   for(const t of items){
-    if(t.date!==lastDay){lastDay=t.date;h+=`<h3>${new Date(t.date+'T00:00').toLocaleDateString('ru-RU',{day:'numeric',month:'long',weekday:'short'})}</h3>`}
+    if(t.date!==cur){flush();cur=t.date}
+    dayTot+=t.amount;
     const src={applepay:' · Apple Pay',receipt:' · чек'}[t.src]||'';
-    h+=`<div class="tx" data-id="${t.id}"><div class="ic">${catIcon(t.cat)}</div><div><div class="n">${esc(t.note||t.cat)}</div><div class="m">${esc(t.cat)}${src}</div></div><div><div class="a">${fmt(t.amount)}</div><button class="x" data-del="${t.id}">удалить</button></div></div>`;
+    const letter=esc((t.note||t.cat||'?').trim().charAt(0).toUpperCase()||'?');
+    buf+=`<button class="tx" data-id="${t.id}"><span class="gl" style="--c:${catColor(t.cat)}">${letter}</span><span class="mid"><b>${esc(t.note||t.cat||'Без названия')}</b><i>${esc(t.cat||'')}${src}</i></span><span class="amt">${moneyHtml(t.amount)} <small>${esc(S.cur)}</small></span></button>`;
   }
+  flush();
   $('list').innerHTML=h;
 }
-const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 
-// ---- add/edit
-function drawCats(){$('fCats').innerHTML=S.cats.map(c=>`<button data-c="${esc(c.n)}" class="${c.n===selCat?'on':''}">${c.e} ${esc(c.n)}</button>`).join('')}
+// ---------- листы ----------
+const openSh=id=>$(id).classList.add('on'), closeSh=id=>$(id).classList.remove('on');
+['sheet','set'].forEach(id=>$(id).addEventListener('click',e=>{if(e.target===$(id))closeSh(id)}));
+
+function drawCats(){$('fCats').innerHTML=S.cats.map(c=>`<button type="button" class="chip ${c.n===selCat?'on':''}" style="--c:${c.c}" data-c="${esc(c.n)}"><i></i>${esc(c.n)}</button>`).join('')}
 function openSheet(pref={},id=null){
   editId=id;$('sheetTitle').textContent=id?'Правка':'Новая трата';
-  $('fAmount').value=pref.amount??'';$('fNote').value=pref.note??'';$('fDate').value=pref.date||today();
+  $('fAmount').value=pref.amount??'';$('fNote').value=pref.note??'';$('fDate').value=pref.date||today();$('fCur').textContent=S.cur;
   selCat=pref.cat||guessCat(pref.note);$('ocrHint').textContent=pref.hint||'';
-  drawCats();$('sheet').classList.add('on');if(!pref.amount)setTimeout(()=>$('fAmount').focus(),50);
+  $('fDel').hidden=!id;drawCats();openSh('sheet');
+  if(!pref.amount)setTimeout(()=>$('fAmount').focus(),250);
 }
-$('addBtn').onclick=()=>openSheet();
+$('addBtn').onclick=()=>{pendingSrc=null;openSheet()};
 $('fCats').onclick=e=>{const b=e.target.closest('button');if(!b)return;selCat=b.dataset.c;drawCats()};
-$('fCancel').onclick=()=>$('sheet').classList.remove('on');
+$('fNote').addEventListener('input',()=>{if(!editId&&!$('fCats').dataset.manual){const g=guessCat($('fNote').value);if(g){selCat=g;drawCats()}}});
+$('fCats').addEventListener('click',()=>{$('fCats').dataset.manual='1'});
+$('sheet').addEventListener('transitionend',()=>{if(!$('sheet').classList.contains('on'))delete $('fCats').dataset.manual});
+$('fCancel').onclick=()=>{pendingSrc=null;closeSh('sheet')};
 $('fSave').onclick=()=>{
   const amount=parseAmount($('fAmount').value);
   if(!(amount>0)){toast('Введи сумму');return}
   const rec={amount,note:$('fNote').value.trim(),cat:selCat,date:$('fDate').value||today()};
   if(editId){const t=S.tx.find(t=>t.id===editId);Object.assign(t,rec);touch(t)}
   else S.tx.push({id:uid(),src:pendingSrc||'manual',...rec,u:Date.now(),dirty:true});
-  pendingSrc=null;save();$('sheet').classList.remove('on');
+  pendingSrc=null;save();closeSh('sheet');
   const d=new Date(rec.date+'T00:00');view=new Date(d.getFullYear(),d.getMonth(),1);render();
 };
-let pendingSrc=null;
-$('list').onclick=e=>{
-  const d=e.target.closest('[data-del]');
-  if(d){if(confirm('Удалить трату?')){const t=S.tx.find(x=>x.id===d.dataset.del);t.del=true;touch(t);save();render()}return}
-  const r=e.target.closest('.tx');if(r){const t=S.tx.find(x=>x.id===r.dataset.id);openSheet(t,t.id)}
-};
+$('fDel').onclick=()=>{if(!editId||!confirm('Удалить трату?'))return;const t=S.tx.find(x=>x.id===editId);t.del=true;touch(t);save();closeSh('sheet');render()};
+$('list').onclick=e=>{const r=e.target.closest('.tx');if(r){const t=S.tx.find(x=>x.id===r.dataset.id);pendingSrc=null;openSheet(t,t.id)}};
 $('prev').onclick=()=>{view=new Date(view.getFullYear(),view.getMonth()-1,1);render()};
 $('next').onclick=()=>{view=new Date(view.getFullYear(),view.getMonth()+1,1);render()};
 
-// ---- receipt OCR (Tesseract.js, всё локально в браузере)
+// ---------- распознавание чека (Tesseract.js, локально в браузере) ----------
 let tessLoading=null;
-function loadTess(){return tessLoading||(tessLoading=new Promise((res,rej)=>{const s=document.createElement('script');s.src='https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js';s.onload=res;s.onerror=()=>rej(new Error('Не удалось загрузить OCR (нужен интернет)'));document.head.appendChild(s)}))}
+function loadTess(){return tessLoading||(tessLoading=new Promise((res,rej)=>{const s=document.createElement('script');s.src='https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js';s.onload=res;s.onerror=()=>{tessLoading=null;rej(new Error('Не удалось загрузить OCR (нужен интернет)'))};document.head.appendChild(s)}))}
 function parseReceipt(text){
   const lines=text.split('\n').map(l=>l.trim()).filter(Boolean);
-  const nums=l=>(l.match(/\d{1,3}(?:[ \u00a0]?\d{3})*[.,]\d{2}(?!\d)/g)||[]).map(x=>parseAmount(x.replace(/[\s\u00a0]/g,'')));
+  const nums=l=>(l.match(/\d{1,3}(?:[  ]?\d{3})*[.,]\d{2}(?!\d)/g)||[]).map(x=>parseAmount(x.replace(/[\s ]/g,'')));
   let amount=NaN;
   const key=/итог|к оплате|к уплате|всего|сумма|total|amount due|balance due|grand/i;
   const cand=[];
@@ -224,22 +363,25 @@ $('file').onchange=async e=>{
   }catch(err){toast(err.message||'Ошибка распознавания');pendingSrc=null}
 };
 
-// ---- settings
+// ---------- настройки ----------
 function drawSet(){
   $('sCur').value=S.cur;
-  $('sCats').innerHTML=S.cats.map(c=>`<button data-n="${esc(c.n)}">${c.e} ${esc(c.n)} ✕</button>`).join('');
-  $('sLink').value=location.origin+location.pathname+'#add?amount=AMOUNT&merchant=MERCHANT';
+  $('sCats').innerHTML=S.cats.map(c=>`<div class="crow" style="--c:${c.c}"><span class="dot"></span><span class="n">${esc(c.n)}</span><button class="x" data-n="${esc(c.n)}" aria-label="Удалить категорию"><svg class="i" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>`).join('');
+  $('sSw').innerHTML=PALETTE.map(c=>`<button type="button" class="${c===newColor?'on':''}" style="--c:${c}" data-c="${c}" aria-label="Цвет"></button>`).join('');
+  const link=applePayLink();$('sLinkTxt').textContent=link.replace(/^https?:\/\//,'');
 }
-$('gear').onclick=()=>{drawSet();updSyncUI();$('set').classList.add('on')};
-const setTouch=()=>{S.setU=Date.now();S.setDirty=true};
-$('sClose').onclick=()=>{const c=$('sCur').value||'$';if(c!==S.cur){S.cur=c;setTouch()}save();$('set').classList.remove('on');render()};
-$('sAdd').onclick=()=>{const n=$('sName').value.trim();if(!n||S.cats.some(c=>c.n===n))return;S.cats.push({e:$('sEmoji').value||'🔹',n});setTouch();$('sName').value='';$('sEmoji').value='';save();drawSet()};
-$('sCats').onclick=e=>{const b=e.target.closest('button');if(!b)return;if(S.cats.length<=1)return;if(confirm('Удалить категорию «'+b.dataset.n+'»? Старые траты сохранятся.')){S.cats=S.cats.filter(c=>c.n!==b.dataset.n);setTouch();save();drawSet()}};
+const applePayLink=()=>location.origin+location.pathname+'#add?amount=AMOUNT&merchant=MERCHANT';
+$('gear').onclick=()=>{drawSet();updSyncUI();openSh('set')};
+$('sClose').onclick=()=>{const c=$('sCur').value||'$';if(c!==S.cur){S.cur=c;setTouch()}save();closeSh('set');render()};
+$('sSw').onclick=e=>{const b=e.target.closest('button');if(!b)return;newColor=b.dataset.c;drawSet()};
+$('sAdd').onclick=()=>{const n=$('sName').value.trim();if(!n||S.cats.some(c=>c.n===n))return;S.cats.push({n,c:newColor});newColor=PALETTE[(S.cats.length)%PALETTE.length];setTouch();$('sName').value='';save();drawSet()};
+$('sCats').onclick=e=>{const b=e.target.closest('.x');if(!b)return;if(S.cats.length<=1)return;if(confirm('Удалить категорию «'+b.dataset.n+'»? Старые траты сохранятся.')){S.cats=S.cats.filter(c=>c.n!==b.dataset.n);setTouch();save();drawSet()}};
+$('sCopy').onclick=async()=>{try{await navigator.clipboard.writeText(applePayLink().replace('AMOUNT','').replace('MERCHANT',''));toast('Ссылка скопирована')}catch(e){prompt('Скопируй ссылку:',applePayLink())}};
 $('exp').onclick=()=>{const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([JSON.stringify(S,null,1)],{type:'application/json'}));a.download='finance-backup-'+today()+'.json';a.click()};
 $('imp').onclick=()=>$('impFile').click();
-$('impFile').onchange=async e=>{const f=e.target.files[0];if(!f)return;try{const d=JSON.parse(await f.text());if(!d.tx||!d.cats)throw 0;if(confirm('Заменить текущие данные импортируемыми?')){S=d;S.lastPull=0;S.uid=user?user.id:undefined;S.tx.forEach(touch);setTouch();save();drawSet();render()}}catch(_){toast('Неверный файл')}e.target.value=''};
+$('impFile').onchange=async e=>{const f=e.target.files[0];if(!f)return;try{const d=JSON.parse(await f.text());if(!d.tx||!d.cats)throw 0;if(confirm('Заменить текущие данные импортируемыми?')){S=d;S.cats=normCats(S.cats);S.lastPull=0;S.uid=user?user.id:undefined;S.tx.forEach(touch);setTouch();save();drawSet();render()}}catch(_){toast('Неверный файл')}e.target.value=''};
 
-// ---- Apple Pay / URL: #add?amount=12.5&merchant=Starbucks[&cat=Кафе][&date=2026-11-03]
+// ---------- Apple Pay / ссылка: #add?amount=12.5&merchant=Starbucks[&cat=Кафе][&date=2026-11-03] ----------
 function handleHash(){
   if(!location.hash.startsWith('#add'))return;
   const p=new URLSearchParams(location.hash.split('?')[1]||'');
@@ -247,37 +389,42 @@ function handleHash(){
   const amount=parseAmount((p.get('amount')||'').replace(/[^\d.,-]/g,''));
   const note=(p.get('merchant')||p.get('note')||'').trim();
   if(!(amount>0)){
-    // нет суммы (например, триггер «поднесение карты») — открываем форму, остаётся ввести сумму
     pendingSrc='applepay';
-    openSheet({note,hint:'Оплата Apple Pay — введи сумму.'});
+    if(!$('app').hidden)openSheet({note,hint:'Оплата Apple Pay — введи сумму.'});
     return;
   }
   const cat=S.cats.some(c=>c.n===p.get('cat'))?p.get('cat'):guessCat(note);
   const date=/^\d{4}-\d{2}-\d{2}$/.test(p.get('date')||'')?p.get('date'):today();
   S.tx.push({id:uid(),src:'applepay',amount:Math.abs(amount),note,cat,date,u:Date.now(),dirty:true});save();
-  view=new Date(new Date(date+'T00:00').getFullYear(),new Date(date+'T00:00').getMonth(),1);
+  const d=new Date(date+'T00:00');view=new Date(d.getFullYear(),d.getMonth(),1);
   render();toast('Записано: '+fmt(Math.abs(amount)));
 }
 window.addEventListener('hashchange',handleHash);
 
-// ---- облачная синхронизация (Supabase): local-first, last-write-wins по полю u
+// ---------- облако (Supabase): local-first, last-write-wins по полю u ----------
 const CFG=window.FIN_CONFIG||{};
-let sb=null,user=null,syncing=false,again=false,syncT=null;
+let sb=null,user=null,syncing=false,again=false,syncT=null,authChecked=false,sbP=null,authMode='in';
 const sbReady=()=>!!(CFG.url&&CFG.key);
+const hadAuth=(()=>{try{return !!localStorage.getItem('fin.auth')}catch(e){return false}})();
 function loadSb(){return new Promise((res,rej)=>{if(window.supabase)return res();const s=document.createElement('script');s.src='https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js';s.onload=res;s.onerror=()=>rej(new Error('offline'));document.head.appendChild(s)})}
-function updSyncUI(msg){
-  const st=$('syncStat');if(!st)return;
-  if(!sbReady()){st.textContent='Облако не настроено (заполни config.js).';$('authBox').style.display='none';$('outBox').style.display='none';return}
-  $('authBox').style.display=user?'none':'';$('outBox').style.display=user?'flex':'none';
-  st.textContent=msg||(user?'Аккаунт: '+user.email:'Войди, чтобы синхронизировать устройства.');
+function gate(){
+  const need=sbReady()&&!user&&(authChecked||!hadAuth);
+  $('auth').hidden=!need;$('app').hidden=need;
 }
-async function initSync(){
-  updSyncUI();if(!sbReady())return;
-  try{await loadSb()}catch(e){updSyncUI('Нет сети — данные сохраняются локально.');return}
-  sb=window.supabase.createClient(CFG.url,CFG.key,{auth:{persistSession:true,autoRefreshToken:true,storageKey:'fin.auth'}});
-  const {data}=await sb.auth.getSession();user=data.session?data.session.user:null;
-  sb.auth.onAuthStateChange((_e,s)=>{user=s?s.user:null;updSyncUI();if(user)sync()});
-  updSyncUI();if(user)sync();
+function updSyncUI(msg){
+  $('acct').hidden=!(sbReady()&&user);
+  if(user){$('acEmail').textContent=user.email||'';$('syncStat').textContent=msg||'Готово'}
+}
+function initSync(){
+  gate();
+  if(!sbReady())return Promise.resolve();
+  return sbP=(async()=>{
+    try{await loadSb()}catch(e){return}
+    sb=window.supabase.createClient(CFG.url,CFG.key,{auth:{persistSession:true,autoRefreshToken:true,storageKey:'fin.auth'}});
+    const {data}=await sb.auth.getSession();user=data.session?data.session.user:null;authChecked=true;
+    sb.auth.onAuthStateChange((_e,s)=>{user=s?s.user:null;gate();updSyncUI();if(user){handleHash();sync()}});
+    gate();updSyncUI();if(user)sync();
+  })();
 }
 function scheduleSync(){clearTimeout(syncT);syncT=setTimeout(sync,800)}
 async function sync(){
@@ -290,17 +437,15 @@ async function sync(){
       S.tx=[];S.lastPull=0;S.setU=0;S.setDirty=false;
     }
     S.uid=user.id;
-    // настройки (категории, валюта)
     const {data:sr,error:se}=await sb.from('settings').select('data,u').maybeSingle();
     if(se)throw se;
-    if(sr&&sr.u>(S.setU||0)){S.cats=(sr.data&&sr.data.cats)||S.cats;S.cur=(sr.data&&sr.data.cur)||S.cur;S.setU=Number(sr.u);S.setDirty=false}
+    if(sr&&sr.u>(S.setU||0)){S.cats=normCats((sr.data&&sr.data.cats)||S.cats);S.cur=(sr.data&&sr.data.cur)||S.cur;S.setU=Number(sr.u);S.setDirty=false}
     else if(!sr||S.setDirty){
       const u=S.setU||Date.now();
       const {error}=await sb.from('settings').upsert({user_id:user.id,data:{cats:S.cats,cur:S.cur},u});
       if(error)throw error;
       S.setU=u;S.setDirty=false;
     }
-    // отправка изменённых трат
     const dirty=S.tx.filter(t=>t.dirty);
     for(let i=0;i<dirty.length;i+=200){
       const chunk=dirty.slice(i,i+200);
@@ -309,7 +454,6 @@ async function sync(){
       if(error)throw error;
       chunk.forEach(t=>{if(t.u===sent.get(t.id))delete t.dirty});
     }
-    // получение новых изменений
     for(;;){
       const {data:rows,error}=await sb.from('transactions').select('*').gt('u',S.lastPull).order('u').limit(1000);
       if(error)throw error;
@@ -322,23 +466,53 @@ async function sync(){
       if(rows.length<1000)break;
     }
     persist();render();
-    updSyncUI('Синхронизировано '+new Date().toLocaleTimeString('ru-RU',{hour:'2-digit',minute:'2-digit'}));
-  }catch(e){updSyncUI('Ошибка синхронизации: '+(e.message||e))}
+    updSyncUI('Обновлено '+new Date().toLocaleTimeString('ru-RU',{hour:'2-digit',minute:'2-digit'}));
+  }catch(e){updSyncUI('Ошибка: '+(e.message||e))}
   finally{syncing=false;if(again){again=false;scheduleSync()}}
 }
-async function authDo(kind){
-  if(!sb)return toast('Нет соединения');
-  const email=$('aEmail').value.trim(),password=$('aPass').value;
-  if(!email||password.length<6)return toast('Email и пароль от 6 символов');
-  const {data,error}=await(kind==='up'?sb.auth.signUp({email,password}):sb.auth.signInWithPassword({email,password}));
-  if(error)return toast(error.message);
-  if(kind==='up'&&!data.session)return toast('Проверь почту и подтверди email');
-  $('aPass').value='';
+
+// ---------- вход / регистрация (код доступа проверяется на сервере) ----------
+function setMode(m){
+  authMode=m;
+  document.querySelectorAll('.tabs button').forEach(b=>b.classList.toggle('on',b.dataset.m===m));
+  $('aCodeRow').hidden=m!=='up';
+  $('aGo').textContent=m==='up'?'Создать аккаунт':'Войти';
+  $('aPass').autocomplete=m==='up'?'new-password':'current-password';
+  setErr('');
 }
-$('aIn').onclick=()=>authDo('in');
-$('aUp').onclick=()=>authDo('up');
+function setErr(t,ok){const e=$('aErr');e.textContent=t;e.className='err'+(ok?' ok':'')}
+function authMsg(m){
+  m=m||'';
+  if(/invalid login/i.test(m))return'Неверный email или пароль';
+  if(/already registered|already been registered/i.test(m))return'Этот email уже зарегистрирован';
+  if(/database error|invalid_invite|invite/i.test(m))return'Неверный код доступа или он уже использован';
+  if(/password should be|at least/i.test(m))return'Пароль слишком короткий (от 6 символов)';
+  if(/valid email|invalid email|unable to validate email/i.test(m))return'Проверь email';
+  if(/rate limit|too many/i.test(m))return'Слишком много попыток, подожди немного';
+  if(/fetch|network/i.test(m))return'Нет соединения';
+  return m;
+}
+document.querySelectorAll('.tabs button').forEach(b=>b.onclick=()=>setMode(b.dataset.m));
+$('aForm').onsubmit=async e=>{
+  e.preventDefault();
+  const email=$('aEmail').value.trim(),password=$('aPass').value,code=$('aCode').value.trim();
+  if(!email||password.length<6)return setErr('Введи email и пароль от 6 символов');
+  if(authMode==='up'&&!code)return setErr('Введи код доступа');
+  $('aGo').disabled=true;setErr('');
+  try{
+    if(sbP)await sbP;
+    if(!sb)throw new Error('Нет соединения');
+    const {data,error}=await(authMode==='up'
+      ?sb.auth.signUp({email,password,options:{data:{invite_code:code}}})
+      :sb.auth.signInWithPassword({email,password}));
+    if(error)throw error;
+    if(authMode==='up'&&!data.session){setErr('Проверь почту и подтверди email.',true);return}
+    $('aPass').value='';$('aCode').value='';
+  }catch(err){setErr(authMsg(err.message))}
+  finally{$('aGo').disabled=false}
+};
 $('aSync').onclick=()=>sync();
-$('aOut').onclick=async()=>{if(sb)await sb.auth.signOut();user=null;updSyncUI()};
+$('aOut').onclick=async()=>{if(!confirm('Выйти из аккаунта? Данные на устройстве сохранятся.'))return;closeSh('set');if(sb)await sb.auth.signOut();user=null;gate()};
 window.addEventListener('online',sync);
 document.addEventListener('visibilitychange',()=>{if(!document.hidden)sync()});
 
