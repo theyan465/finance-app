@@ -19,7 +19,8 @@ Settings → Pages → Deploy from a branch → `main` / root → Save. Сайт
    `insert into public.invite_codes (code, max_uses) values ('ТВОЙ-КОД', 3);`
    `max_uses`: сколько раз код можно использовать. Сменить код: удалить строку и добавить новую.
 4. Authentication → Sign In / Providers → Email: выключи **Confirm email**.
-5. `config.js`: Project URL и anon public key (публичные значения; защита обеспечена RLS). **Service role key** нигде не используй и не публикуй.
+5. Сброс пароля («Забыли пароль?» на экране входа): Authentication → URL Configuration → **Site URL** = `https://ЛОГИН.github.io/РЕПО/` и добавь тот же адрес в **Redirect URLs**. Встроенная почта Supabase отправляет письма только адресам участников твоей организации; для остальных нужен свой SMTP (Authentication → SMTP). Запасной путь: Authentication → Users → пользователь → Send password recovery.
+6. `config.js`: Project URL и anon public key (публичные значения; защита обеспечена RLS). **Service role key** нигде не используй и не публикуй.
 
 ## 3. Иконка на экране «Домой»
 Safari → «Поделиться» → «На экран Домой». Входить нужно отдельно в Safari и в иконке: у них раздельное хранилище, но после входа данные общие.

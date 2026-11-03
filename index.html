@@ -81,7 +81,7 @@ svg.i{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:1.8;stro
 .pbody{overflow:auto;flex:1;min-height:0;-webkit-overflow-scrolling:touch;padding-bottom:6px}
 .pfoot{flex:none;padding:12px 0 calc(16px + env(safe-area-inset-bottom));background:var(--bg)}
 .pfoot .btn{width:100%;flex:none}
-.cal{padding:14px 12px 12px}
+.cal{padding:6px 0 0}
 .cal .wd,.cal .grid{display:grid;grid-template-columns:repeat(7,1fr);gap:4px}
 .cal .wd span{text-align:center;font-size:11px;color:var(--mut);letter-spacing:.04em;padding-bottom:6px;text-transform:uppercase}
 .cd{aspect-ratio:1/1.1;border-radius:12px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;font-size:14px;font-weight:550;line-height:1.1;background:color-mix(in srgb,var(--heat) var(--hb,0%),transparent);color:var(--tx);transition:transform .1s}
@@ -93,6 +93,12 @@ svg.i{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:1.8;stro
 .cd.sel small{color:var(--bg);opacity:.65}
 .cd.pad{visibility:hidden}
 .clr{color:var(--tx);font-size:13px;padding:5px 12px;border-radius:14px;background:var(--s1);border:1px solid var(--line)}
+.mbtn{display:flex;align-items:center;justify-content:center;gap:4px;height:44px;padding:0 8px;border-radius:22px;color:var(--tx)}
+.mbtn:active{background:var(--s2)}
+.mbtn svg{width:16px;height:16px;color:var(--mut)}
+.mbtn.f b::after{content:"";display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--heat);margin-left:7px;vertical-align:middle}
+.lnk2{display:block;margin:16px auto 0;color:var(--mut);font-size:14px;padding:6px 10px}
+.rt{font-size:26px;font-weight:650;letter-spacing:-.02em;margin:0 0 18px}
 .big{display:flex;align-items:baseline;justify-content:center;gap:8px;padding:18px 0 14px}
 .big input{width:100%;max-width:260px;background:none;border:0;outline:0;text-align:center;font-size:52px;font-weight:650;letter-spacing:-.035em;padding:0}
 .big input::placeholder{color:var(--s2)}
@@ -154,14 +160,16 @@ input.in:focus{border-color:var(--mut)}
   <div class="auth-in">
     <div class="brand">Траты</div>
     <p class="tag">Личный учёт финансов</p>
-    <div class="tabs"><button type="button" data-m="in" class="on">Вход</button><button type="button" data-m="up">Регистрация</button></div>
+    <h2 class="rt" id="aTitle" hidden>Новый пароль</h2>
+    <div class="tabs" id="aTabs"><button type="button" data-m="in" class="on">Вход</button><button type="button" data-m="up">Регистрация</button></div>
     <form id="aForm" novalidate>
-      <label class="field"><span>Email</span><input class="in" id="aEmail" type="email" autocomplete="email" inputmode="email" autocapitalize="off"></label>
+      <label class="field" id="aEmailRow"><span>Email</span><input class="in" id="aEmail" type="email" autocomplete="email" inputmode="email" autocapitalize="off"></label>
       <label class="field"><span>Пароль</span><input class="in" id="aPass" type="password" autocomplete="current-password" placeholder="Минимум 6 символов"></label>
       <label class="field" id="aCodeRow" hidden><span>Код доступа</span><input class="in" id="aCode" type="text" autocomplete="off" autocapitalize="off" spellcheck="false"></label>
       <div class="err" id="aErr"></div>
       <button class="btn pri" id="aGo" type="submit">Войти</button>
     </form>
+    <button type="button" class="lnk2" id="aForgot">Забыли пароль?</button>
   </div>
 </div>
 
@@ -171,7 +179,7 @@ input.in:focus{border-color:var(--mut)}
     <div class="bar">
       <div class="month">
         <button class="ico" id="prev" aria-label="Предыдущий месяц"><svg class="i" viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg></button>
-        <b id="month"></b>
+        <button class="mbtn" id="monthBtn" aria-label="Открыть календарь"><b id="month"></b><svg class="i" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg></button>
         <button class="ico" id="next" aria-label="Следующий месяц"><svg class="i" viewBox="0 0 24 24"><path d="M9 5l7 7-7 7"/></svg></button>
       </div>
       <button class="ico" id="gear" aria-label="Настройки"><svg class="i" viewBox="0 0 24 24"><path d="M4 7h10M18 7h2M4 17h2M10 17h10"/><circle cx="16" cy="7" r="2"/><circle cx="8" cy="17" r="2"/></svg></button>
@@ -183,8 +191,6 @@ input.in:focus{border-color:var(--mut)}
     </div>
     <div id="split" class="split"></div>
     <div id="cats" class="card"></div>
-    <div class="sec"><b>Календарь</b><span>траты по дням</span></div>
-    <div class="card cal" id="cal"></div>
     <div class="sec"><b>Операции</b><span id="count"></span></div>
     <div id="list"></div>
   </div>
@@ -205,6 +211,18 @@ input.in:focus{border-color:var(--mut)}
     <label class="field"><span>Дата</span><input class="in" id="fDate" type="date"></label>
     <div class="hint" id="ocrHint"></div>
     <div class="btns"><button class="btn del" id="fDel" hidden>Удалить</button><button class="btn" id="fCancel">Отмена</button><button class="btn pri" id="fSave">Сохранить</button></div>
+  </div></div>
+
+  <!-- календарь -->
+  <div class="sheet" id="calSheet"><div class="panel">
+    <div class="grab"></div>
+    <div class="phead">
+      <button class="ico" id="cPrev" style="margin:0" aria-label="Предыдущий месяц"><svg class="i" viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg></button>
+      <h2 id="cTitle" style="text-transform:capitalize"></h2>
+      <button class="ico" id="cNext" style="margin:0" aria-label="Следующий месяц"><svg class="i" viewBox="0 0 24 24"><path d="M9 5l7 7-7 7"/></svg></button>
+    </div>
+    <div class="cal" id="cal"></div>
+    <div class="btns"><button class="btn" id="cAll">Весь месяц</button><button class="btn pri" id="cToday">Сегодня</button></div>
   </div></div>
 
   <!-- настройки -->
@@ -294,7 +312,8 @@ function dayLabel(iso){
 
 // ---------- отрисовка ----------
 function render(){
-  $('month').textContent=view.toLocaleDateString('ru-RU',{month:'long',year:'numeric'});
+  const ml=view.toLocaleDateString('ru-RU',{month:'long',year:'numeric'});
+  $('month').textContent=ml;$('cTitle').textContent=ml;$('monthBtn').classList.toggle('f',!!selDay);
   const ym=ymOf(view),prev=ymOf(new Date(view.getFullYear(),view.getMonth()-1,1));
   const live=S.tx.filter(t=>!t.del);
   const items=live.filter(t=>t.date.startsWith(ym)).sort((a,b)=>b.date.localeCompare(a.date)||b.u-a.u);
@@ -342,7 +361,11 @@ function renderCal(items){
   }
   $('cal').innerHTML=h+'</div>';
 }
-$('cal').onclick=e=>{const b=e.target.closest('.cd[data-d]');if(!b)return;selDay=selDay===b.dataset.d?null:b.dataset.d;render()};
+$('cal').onclick=e=>{const b=e.target.closest('.cd[data-d]');if(!b)return;selDay=selDay===b.dataset.d?null:b.dataset.d;closeSh('calSheet');render()};
+$('monthBtn').onclick=()=>openSh('calSheet');
+$('cAll').onclick=()=>{selDay=null;closeSh('calSheet');render()};
+$('cToday').onclick=()=>{const n=new Date();view=new Date(n.getFullYear(),n.getMonth(),1);selDay=today();closeSh('calSheet');render()};
+$('calSheet').addEventListener('click',e=>{if(e.target===$('calSheet'))closeSh('calSheet')});
 $('count').onclick=e=>{if(e.target.closest('#clrDay')){selDay=null;render()}};
 
 // ---------- листы ----------
@@ -375,8 +398,9 @@ $('fSave').onclick=()=>{
 };
 $('fDel').onclick=()=>{if(!editId||!confirm('Удалить трату?'))return;const t=S.tx.find(x=>x.id===editId);t.del=true;touch(t);save();closeSh('sheet');render()};
 $('list').onclick=e=>{const r=e.target.closest('.tx');if(r){const t=S.tx.find(x=>x.id===r.dataset.id);pendingSrc=null;openSheet(t,t.id)}};
-$('prev').onclick=()=>{selDay=null;view=new Date(view.getFullYear(),view.getMonth()-1,1);render()};
-$('next').onclick=()=>{selDay=null;view=new Date(view.getFullYear(),view.getMonth()+1,1);render()};
+const shiftMonth=d=>{selDay=null;view=new Date(view.getFullYear(),view.getMonth()+d,1);render()};
+$('prev').onclick=()=>shiftMonth(-1);$('next').onclick=()=>shiftMonth(1);
+$('cPrev').onclick=()=>shiftMonth(-1);$('cNext').onclick=()=>shiftMonth(1);
 
 // ---------- распознавание чека (Tesseract.js, локально в браузере) ----------
 let tessLoading=null;
@@ -449,12 +473,12 @@ window.addEventListener('hashchange',handleHash);
 
 // ---------- облако (Supabase): local-first, last-write-wins по полю u ----------
 const CFG=window.FIN_CONFIG||{};
-let sb=null,user=null,syncing=false,again=false,syncT=null,authChecked=false,sbP=null,authMode='in';
+let sb=null,user=null,syncing=false,again=false,syncT=null,authChecked=false,sbP=null,authMode='in',recovering=/type=recovery/.test(location.hash);
 const sbReady=()=>!!(CFG.url&&CFG.key);
 const hadAuth=(()=>{try{return !!localStorage.getItem('fin.auth')}catch(e){return false}})();
 function loadSb(){return new Promise((res,rej)=>{if(window.supabase)return res();const s=document.createElement('script');s.src='https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js';s.onload=res;s.onerror=()=>rej(new Error('offline'));document.head.appendChild(s)})}
 function gate(){
-  const need=sbReady()&&!user&&(authChecked||!hadAuth);
+  const need=sbReady()&&(recovering||(!user&&(authChecked||!hadAuth)));
   $('auth').hidden=!need;$('app').hidden=need;
 }
 function updSyncUI(msg){
@@ -462,13 +486,15 @@ function updSyncUI(msg){
   if(user){$('acEmail').textContent=user.email||'';$('syncStat').textContent=msg||'Готово'}
 }
 function initSync(){
+  if(recovering)setMode('reset');
   gate();
   if(!sbReady())return Promise.resolve();
   return sbP=(async()=>{
     try{await loadSb()}catch(e){return}
     sb=window.supabase.createClient(CFG.url,CFG.key,{auth:{persistSession:true,autoRefreshToken:true,storageKey:'fin.auth'}});
     const {data}=await sb.auth.getSession();user=data.session?data.session.user:null;authChecked=true;
-    sb.auth.onAuthStateChange((_e,s)=>{user=s?s.user:null;gate();updSyncUI();if(user){handleHash();sync()}});
+    if(recovering&&!user){recovering=false;setMode('in');setErr('Ссылка недействительна или устарела. Запроси новое письмо.')}
+    sb.auth.onAuthStateChange((ev,s)=>{user=s?s.user:null;if(ev==='PASSWORD_RECOVERY'){recovering=true;setMode('reset')}gate();updSyncUI();if(user&&!recovering){handleHash();sync()}});
     gate();updSyncUI();if(user)sync();
   })();
 }
@@ -521,9 +547,12 @@ async function sync(){
 function setMode(m){
   authMode=m;
   document.querySelectorAll('.tabs button').forEach(b=>b.classList.toggle('on',b.dataset.m===m));
-  $('aCodeRow').hidden=m!=='up';
-  $('aGo').textContent=m==='up'?'Создать аккаунт':'Войти';
-  $('aPass').autocomplete=m==='up'?'new-password':'current-password';
+  const rs=m==='reset';
+  $('aTabs').hidden=rs;$('aTitle').hidden=!rs;$('aEmailRow').hidden=rs;
+  $('aCodeRow').hidden=m!=='up';$('aForgot').hidden=m!=='in';
+  $('aGo').textContent=rs?'Сохранить пароль':m==='up'?'Создать аккаунт':'Войти';
+  $('aPass').autocomplete=m==='in'?'current-password':'new-password';
+  $('aPass').placeholder=rs?'Новый пароль (от 6 символов)':'Минимум 6 символов';
   setErr('');
 }
 function setErr(t,ok){const e=$('aErr');e.textContent=t;e.className='err'+(ok?' ok':'')}
@@ -535,12 +564,42 @@ function authMsg(m){
   if(/password should be|at least/i.test(m))return'Пароль слишком короткий (от 6 символов)';
   if(/valid email|invalid email|unable to validate email/i.test(m))return'Проверь email';
   if(/rate limit|too many/i.test(m))return'Слишком много попыток, подожди немного';
+  if(/not authorized|not_authorized/i.test(m))return'Письмо отправить нельзя: почта не настроена для этого адреса';
+  if(/same password|different from the old/i.test(m))return'Новый пароль должен отличаться от старого';
+  if(/session missing|expired/i.test(m))return'Ссылка устарела. Запроси новое письмо.';
   if(/fetch|network/i.test(m))return'Нет соединения';
   return m;
 }
 document.querySelectorAll('.tabs button').forEach(b=>b.onclick=()=>setMode(b.dataset.m));
+async function doReset(){
+  const password=$('aPass').value;
+  if(password.length<6)return setErr('Пароль от 6 символов');
+  $('aGo').disabled=true;setErr('');
+  try{
+    if(!sb)throw new Error('Нет соединения');
+    const {error}=await sb.auth.updateUser({password});
+    if(error)throw error;
+    recovering=false;$('aPass').value='';setMode('in');
+    history.replaceState(null,'',location.pathname);
+    gate();updSyncUI();toast('Пароль изменён');sync();
+  }catch(err){setErr(authMsg(err.message))}
+  finally{$('aGo').disabled=false}
+}
+$('aForgot').onclick=async()=>{
+  const email=$('aEmail').value.trim();
+  if(!email)return setErr('Введи email выше, и я отправлю ссылку для сброса');
+  setErr('');
+  try{
+    if(sbP)await sbP;
+    if(!sb)throw new Error('Нет соединения');
+    const {error}=await sb.auth.resetPasswordForEmail(email,{redirectTo:location.origin+location.pathname});
+    if(error)throw error;
+    setErr('Если такой аккаунт есть, письмо со ссылкой отправлено.',true);
+  }catch(err){setErr(authMsg(err.message))}
+};
 $('aForm').onsubmit=async e=>{
   e.preventDefault();
+  if(authMode==='reset')return doReset();
   const email=$('aEmail').value.trim(),password=$('aPass').value,code=$('aCode').value.trim();
   if(!email||password.length<6)return setErr('Введи email и пароль от 6 символов');
   if(authMode==='up'&&!code)return setErr('Введи код доступа');
@@ -562,6 +621,11 @@ $('aOut').onclick=async()=>{if(!confirm('Выйти из аккаунта? Да�
 window.addEventListener('online',sync);
 document.addEventListener('visibilitychange',()=>{if(!document.hidden)sync()});
 
+if(/error_code=|error_description=/.test(location.hash)){
+  const expired=/otp_expired/.test(location.hash);
+  history.replaceState(null,'',location.pathname);
+  setMode('in');setErr(expired?'Ссылка устарела. Запроси новое письмо.':'Не удалось выполнить действие по ссылке.');
+}
 render();handleHash();initSync();
 if('serviceWorker'in navigator)navigator.serviceWorker.register('sw.js').catch(()=>{});
 </script>
