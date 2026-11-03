@@ -1,6 +1,5 @@
 // Настройки облака (Supabase). Эти значения публичные — безопасность обеспечивает Row Level Security в supabase.sql.
-// Заполни после создания проекта: Project Settings → API → Project URL и anon public key.
 window.FIN_CONFIG = {
-  url: '',   // например 'https://abcdxyz.supabase.co'
-  key: ''    // anon public key (начинается с eyJ... или sb_publishable_...)
+  url: 'https://pnogvnrpbsyzizoznnat.supabase.co',
+  key: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBub2d2bnJwYnN5eml6b3pubmF0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTM2OTcwNDQsImV4cCI6MjEwOTI3MzA0NH0.P3gCN2VgTQMrAQFYhG8RKbMJryHrmh2SmbUBXul1V98'
 };
