@@ -227,8 +227,13 @@ function handleHash(){
   const p=new URLSearchParams(location.hash.split('?')[1]||'');
   history.replaceState(null,'',location.pathname);
   const amount=parseAmount((p.get('amount')||'').replace(/[^\d.,-]/g,''));
-  if(!(amount>0)){toast('Не удалось прочитать сумму');return}
   const note=(p.get('merchant')||p.get('note')||'').trim();
+  if(!(amount>0)){
+    // нет суммы (например, триггер «поднесение карты») — открываем форму, остаётся ввести сумму
+    pendingSrc='applepay';
+    openSheet({note,hint:'Оплата Apple Pay — введи сумму.'});
+    return;
+  }
   const cat=S.cats.some(c=>c.n===p.get('cat'))?p.get('cat'):guessCat(note);
   const date=/^\d{4}-\d{2}-\d{2}$/.test(p.get('date')||'')?p.get('date'):today();
   S.tx.push({id:uid(),src:'applepay',amount:Math.abs(amount),note,cat,date});save();
