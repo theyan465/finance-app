@@ -103,6 +103,12 @@ svg.i{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:1.8;stro
 .urow .mid b{display:block;font-weight:550;font-size:15px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .urow .mid i{display:block;font-style:normal;font-size:12px;color:var(--mut);margin-top:2px}
 .mini{padding:8px 14px;border-radius:16px;background:var(--s2);font-size:13px;font-weight:600;flex:none}
+.currow{display:flex;align-items:center;justify-content:center;gap:12px;flex-wrap:wrap;margin:0 0 8px}
+.cursel{-webkit-appearance:none;appearance:none;border:1px solid var(--line);background:var(--s1);color:var(--tx);border-radius:18px;padding:8px 16px;font-size:15px;font-weight:600;outline:0}
+.conv{color:var(--mut);font-size:14px}
+.kv select{-webkit-appearance:none;appearance:none;background:none;border:0;outline:0;color:var(--tx);font:inherit;font-weight:550;text-align:right;text-align-last:right;max-width:58%;text-overflow:ellipsis}
+.tx .amt{text-align:right}
+.tx .cv{display:block;font-style:normal;font-size:12px;color:var(--mut);font-weight:500;margin-top:1px}
 .lnk2{display:block;margin:16px auto 0;color:var(--mut);font-size:14px;padding:6px 10px}
 .rt{font-size:26px;font-weight:650;letter-spacing:-.02em;margin:0 0 18px}
 .big{display:flex;align-items:baseline;justify-content:center;gap:8px;padding:18px 0 14px}
@@ -211,7 +217,8 @@ input.in:focus{border-color:var(--mut)}
   <div class="sheet" id="sheet"><div class="panel">
     <div class="grab"></div>
     <div class="phead"><h2 id="sheetTitle">Новая трата</h2><button class="ico" id="fX" aria-label="Закрыть"><svg class="i" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>
-    <div class="big"><input id="fAmount" inputmode="decimal" placeholder="0" autocomplete="off"><span id="fCur">$</span></div>
+    <div class="big"><input id="fAmount" inputmode="decimal" placeholder="0" autocomplete="off"></div>
+    <div class="currow"><select id="fCurSel" class="cursel" aria-label="Валюта"></select><span class="conv" id="fConv"></span></div>
     <label class="field"><span>Название</span><input class="in" id="fNote" placeholder="Например, Пятёрочка"></label>
     <div class="field"><span>Категория</span><div class="chips" id="fCats"></div></div>
     <label class="field"><span>Дата</span><input class="in" id="fDate" type="date"></label>
@@ -251,8 +258,12 @@ input.in:focus{border-color:var(--mut)}
       <div class="card"><button class="lnk" id="admOpen">Пользователи и пароли</button></div>
     </div>
 
-    <h3>Валюта</h3>
-    <input class="in" id="sCur" maxlength="4" aria-label="Символ валюты">
+    <h3>Валюты</h3>
+    <div class="card">
+      <label class="kv"><span>Основная (итоги)</span><select id="sBase"></select></label>
+      <label class="kv"><span>По умолчанию при вводе</span><select id="sDef"></select></label>
+    </div>
+    <div class="hint">Трата хранится в той валюте, в которой ты платил. Итоги, категории и календарь считаются в основной валюте по курсу на дату траты (ЕЦБ).</div>
 
     <h3>Категории</h3>
     <div class="card" id="sCats"></div>
@@ -302,18 +313,86 @@ const normCats=a=>(a||[]).map((c,i)=>({n:c.n,c:c.c||(DEF_CATS.find(d=>d[0]===c.n
 const $=id=>document.getElementById(id);
 const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 
+// ---------- валюты и курсы ----------
+const SYM={USD:'$',EUR:'€',PLN:'zł',GBP:'£',CZK:'Kč',UAH:'₴',RUB:'₽',JPY:'¥',CNY:'¥',TRY:'₺',CAD:'C$',AUD:'A$',HUF:'Ft',RON:'lei',BGN:'лв',ILS:'₪',INR:'₹',KRW:'₩',KZT:'₸',GEL:'₾'};
+const NAMES={USD:'доллар США',EUR:'евро',PLN:'злотый',GBP:'фунт',CHF:'франк',CZK:'чешская крона',UAH:'гривна',RUB:'рубль',TRY:'лира',CAD:'канадский доллар',AUD:'австралийский доллар',JPY:'иена',CNY:'юань',SEK:'шведская крона',NOK:'норвежская крона',DKK:'датская крона',HUF:'форинт',RON:'лей',BGN:'лев',ILS:'шекель',INR:'рупия',KRW:'вона',KZT:'тенге',GEL:'лари',AED:'дирхам ОАЭ',MXN:'песо',BRL:'реал',ZAR:'рэнд',SGD:'сингапурский доллар',HKD:'гонконгский доллар',NZD:'новозеландский доллар',THB:'бат'};
+const CURS=Object.keys(NAMES);
+const sym=c=>SYM[c]||c;
+let RC={};try{RC=JSON.parse(localStorage.getItem('fin.rc'))||{}}catch(e){}
+const inflight={};
+function detectCur(s){
+  s=String(s||'');
+  const m=s.toUpperCase().match(new RegExp('\\b('+CURS.join('|')+')\\b'));
+  if(m)return m[1];
+  if(/zł|\bzl\b/i.test(s))return'PLN';
+  if(/€/.test(s))return'EUR';if(/£/.test(s))return'GBP';if(/₽|руб/i.test(s))return'RUB';if(/₴|грн/i.test(s))return'UAH';if(/\$/.test(s))return'USD';
+  return null;
+}
+async function getJson(url){
+  const ctl=new AbortController(),tm=setTimeout(()=>ctl.abort(),5000);
+  try{const r=await fetch(url,{signal:ctl.signal});if(!r.ok)throw new Error(r.status);return await r.json()}finally{clearTimeout(tm)}
+}
+function fetchRate(from,to,date){
+  if(from===to)return Promise.resolve({r:1,d:date});
+  const key=from+'>'+to+'@'+date;
+  if(RC[key])return Promise.resolve(RC[key]);
+  if(inflight[key])return inflight[key];
+  return inflight[key]=(async()=>{
+    let out=null;
+    try{const j=await getJson(`https://api.frankfurter.dev/v1/${date}?base=${from}&symbols=${to}`);if(j.rates&&j.rates[to])out={r:j.rates[to],d:j.date||date,s:'ecb'}}catch(e){}
+    if(!out){try{const j=await getJson(`https://api.frankfurter.app/${date}?from=${from}&to=${to}`);if(j.rates&&j.rates[to])out={r:j.rates[to],d:j.date||date,s:'ecb'}}catch(e){}}
+    if(!out){try{const j=await getJson(`https://open.er-api.com/v6/latest/${from}`);if(j.rates&&j.rates[to])out={r:j.rates[to],d:today(),s:'latest'}}catch(e){}}
+    if(out){RC[key]=out;try{localStorage.setItem('fin.rc',JSON.stringify(RC))}catch(e){}}
+    delete inflight[key];
+    return out;
+  })();
+}
+const conv=t=>{const c=t.cur||S.base;if(c===S.base)return t.amount;const r=t.rates&&t.rates[S.base];return r?t.amount*r:null};
+async function ensureRate(t){
+  const c=t.cur||S.base;
+  if(c===S.base||(t.rates&&t.rates[S.base]))return'skip';
+  const x=await fetchRate(c,S.base,t.date);
+  if(!x)return'fail';
+  t.rates={...(t.rates||{}),[S.base]:x.r};touch(t);return'ok';
+}
+let rateBusy=false;
+async function ensureRates(){
+  if(rateBusy||!navigator.onLine)return;rateBusy=true;
+  try{
+    let ch=false,fails=0;
+    for(const t of S.tx){
+      if(t.del)continue;
+      const r=await ensureRate(t);
+      if(r==='ok'){ch=true;fails=0}else if(r==='fail'&&++fails>=3)break;
+    }
+    if(ch){save();render()}
+  }finally{rateBusy=false}
+}
+function fillCurSel(sel,val){
+  const fav=[...new Set([S.defCur,S.base,...(S.recent||[])])].filter(Boolean);
+  const rest=CURS.filter(c=>!fav.includes(c));
+  const opt=c=>`<option value="${c}">${c} · ${NAMES[c]||''}</option>`;
+  sel.innerHTML=fav.map(opt).join('')+'<option disabled>──────────</option>'+rest.map(opt).join('');
+  if(val&&!CURS.includes(val)&&!fav.includes(val))sel.insertAdjacentHTML('afterbegin',opt(val));
+  sel.value=val||S.defCur;
+}
+
 let S=load();
 let view=new Date(); view.setDate(1);
 let editId=null, selCat=null, pendingSrc=null, newColor=PALETTE[0], selDay=null;
 
+function norm(s){
+  s.cats=normCats(s.cats);
+  const m={'$':'USD','€':'EUR','₽':'RUB','zł':'PLN','£':'GBP'};
+  s.base=s.base||m[s.cur]||'USD';s.cur=sym(s.base);s.defCur=s.defCur||s.base;
+  const now=Date.now();
+  s.tx.forEach(t=>{if(!t.u){t.u=now;t.dirty=true}if(!t.cur)t.cur=s.base});
+  s.lastPull=s.lastPull||0;s.setU=s.setU||0;
+  return s}
 function load(){
   let s=null;try{s=JSON.parse(localStorage.getItem(KEY))}catch(e){}
   if(!(s&&s.tx))s={tx:[],cats:DEF_CATS.map(([n,c])=>({n,c})),cur:'$'};
-  s.cats=normCats(s.cats);
-  const now=Date.now();
-  s.tx.forEach(t=>{if(!t.u){t.u=now;t.dirty=true}});
-  s.lastPull=s.lastPull||0;s.setU=s.setU||0;
-  return s}
+  return norm(s)}
 function persist(){localStorage.setItem(KEY,JSON.stringify(S))}
 function save(){persist();scheduleSync()}
 const touch=t=>{t.u=Date.now();t.dirty=true};
@@ -322,12 +401,17 @@ const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,6);
 const catColor=n=>(S.cats.find(c=>c.n===n)||{c:'#9aa3b2'}).c;
 const today=()=>new Date(Date.now()-new Date().getTimezoneOffset()*6e4).toISOString().slice(0,10);
 const numParts=n=>{const [i,d]=Math.abs(n).toFixed(2).split('.');return[i.replace(/\B(?=(\d{3})+(?!\d))/g,' '),d]};
-const fmt=n=>{const[i,d]=numParts(n);return i+','+d+' '+S.cur};
+const fmt=(n,c)=>{const[i,d]=numParts(n);return i+','+d+' '+sym(c||S.base)};
 const moneyHtml=n=>{const[i,d]=numParts(n);return `${i}<small>,${d}</small>`};
 let toastT;
 function toast(t){const e=$('toast');e.textContent=t;e.classList.add('on');clearTimeout(toastT);toastT=setTimeout(()=>e.classList.remove('on'),2400)}
 function guessCat(text){for(const [c,re] of Object.entries(RULES)){if(re.test(text||'')&&S.cats.some(x=>x.n===c))return c}return S.cats.some(x=>x.n==='Другое')?'Другое':(S.cats[S.cats.length-1]||{}).n}
-function parseAmount(v){const n=parseFloat(String(v).replace(/\s/g,'').replace(',','.'));return isFinite(n)?n:NaN}
+function parseAmount(v){
+  let s=String(v).replace(/\s/g,'');
+  const lc=s.lastIndexOf(','),ld=s.lastIndexOf('.');
+  if(lc>-1&&ld>-1)s=lc>ld?s.replace(/\./g,'').replace(',','.'):s.replace(/,/g,'');
+  else s=s.replace(',','.');
+  const n=parseFloat(s);return isFinite(n)?n:NaN}
 const ymOf=d=>d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0');
 function dayLabel(iso){
   const d=new Date(iso+'T00:00'),t=new Date(today()+'T00:00'),diff=Math.round((t-d)/864e5);
@@ -342,17 +426,21 @@ function render(){
   const ym=ymOf(view),prev=ymOf(new Date(view.getFullYear(),view.getMonth()-1,1));
   const live=S.tx.filter(t=>!t.del);
   const items=live.filter(t=>t.date.startsWith(ym)).sort((a,b)=>b.date.localeCompare(a.date)||b.u-a.u);
-  const total=items.reduce((s,t)=>s+t.amount,0);
-  const prevTotal=live.filter(t=>t.date.startsWith(prev)).reduce((s,t)=>s+t.amount,0);
-  $('sum').innerHTML=moneyHtml(total)+'<em>'+esc(S.cur)+'</em>';
-  if(prevTotal>0&&total>0){const p=Math.round((total-prevTotal)/prevTotal*100);$('delta').innerHTML=`<span class="delta"><b>${p>0?'+':p<0?'−':''}${Math.abs(p)}%</b>к прошлому месяцу</span>`}
-  else $('delta').innerHTML='';
-  const by={};items.forEach(t=>by[t.cat]=(by[t.cat]||0)+t.amount);
+  const val=t=>conv(t)||0;
+  const total=items.reduce((s,t)=>s+val(t),0);
+  const prevTotal=live.filter(t=>t.date.startsWith(prev)).reduce((s,t)=>s+val(t),0);
+  const pend=items.filter(t=>conv(t)===null).length;
+  $('sum').innerHTML=moneyHtml(total)+'<em>'+esc(sym(S.base))+'</em>';
+  let dl='';
+  if(prevTotal>0&&total>0){const p=Math.round((total-prevTotal)/prevTotal*100);dl+=`<span class="delta"><b>${p>0?'+':p<0?'−':''}${Math.abs(p)}%</b>к прошлому месяцу</span>`}
+  if(pend)dl+=` <span class="delta">${pend} без курса, загрузится при сети</span>`;
+  $('delta').innerHTML=dl;
+  const by={};items.forEach(t=>by[t.cat]=(by[t.cat]||0)+val(t));
   const ents=Object.entries(by).sort((a,b)=>b[1]-a[1]);
   $('split').style.display=ents.length?'flex':'none';
   $('cats').style.display=ents.length?'block':'none';
   $('split').innerHTML=ents.map(([c,v])=>`<i style="flex:${v};background:${catColor(c)}"></i>`).join('');
-  $('cats').innerHTML=ents.map(([c,v])=>`<div class="crow" style="--c:${catColor(c)}"><span class="dot"></span><span class="n">${esc(c)}</span><span class="p">${Math.round(v/total*100)}%</span><span class="v">${fmt(v)}</span></div>`).join('');
+  $('cats').innerHTML=ents.map(([c,v])=>`<div class="crow" style="--c:${catColor(c)}"><span class="dot"></span><span class="n">${esc(c)}</span><span class="p">${total?Math.round(v/total*100):0}%</span><span class="v">${fmt(v)}</span></div>`).join('');
   $('count').textContent=items.length?items.length+' '+(items.length%10===1&&items.length%100!==11?'запись':(items.length%10>=2&&items.length%10<=4&&(items.length%100<10||items.length%100>=20)?'записи':'записей')):'';
   renderCal(items);
   if(selDay)$('count').innerHTML=`<button class="clr" id="clrDay">${esc(dayLabel(selDay))} · показать все</button>`;
@@ -362,10 +450,10 @@ function render(){
   const flush=()=>{if(cur)h+=`<div class="sec" style="margin-top:22px"><b>${esc(dayLabel(cur))}</b><span>${fmt(dayTot)}</span></div><div class="card">${buf}</div>`;buf='';dayTot=0};
   for(const t of shown){
     if(t.date!==cur){flush();cur=t.date}
-    dayTot+=t.amount;
+    dayTot+=val(t);
     const src={applepay:' · Apple Pay',receipt:' · чек'}[t.src]||'';
     const letter=esc((t.note||t.cat||'?').trim().charAt(0).toUpperCase()||'?');
-    buf+=`<button class="tx" data-id="${t.id}"><span class="gl" style="--c:${catColor(t.cat)}">${letter}</span><span class="mid"><b>${esc(t.note||t.cat||'Без названия')}</b><i>${esc(t.cat||'')}${src}</i></span><span class="amt">${moneyHtml(t.amount)} <small>${esc(S.cur)}</small></span></button>`;
+    buf+=`<button class="tx" data-id="${t.id}"><span class="gl" style="--c:${catColor(t.cat)}">${letter}</span><span class="mid"><b>${esc(t.note||t.cat||'Без названия')}</b><i>${esc(t.cat||'')}${src}</i></span><span class="amt">${moneyHtml(t.amount)} <small>${esc(sym(t.cur||S.base))}</small>${(t.cur||S.base)!==S.base?`<i class="cv">${conv(t)===null?'курс ожидается':'≈ '+fmt(conv(t))}</i>`:''}</span></button>`;
   }
   flush();
   $('list').innerHTML=h;
@@ -375,7 +463,7 @@ function render(){
 function renderCal(items){
   const y=view.getFullYear(),m=view.getMonth();
   const dim=new Date(y,m+1,0).getDate(),off=(new Date(y,m,1).getDay()+6)%7;
-  const by={};items.forEach(t=>by[t.date]=(by[t.date]||0)+t.amount);
+  const by={};items.forEach(t=>by[t.date]=(by[t.date]||0)+(conv(t)||0));
   const mx=Math.max(0,...Object.values(by)),td=today();
   const short=n=>n>=10000?Math.round(n/1000)+'к':n>=1000?(n/1000).toFixed(1).replace('.',',')+'к':String(Math.round(n));
   let h='<div class="wd">'+['Пн','Вт','Ср','Чт','Пт','Сб','Вс'].map(d=>`<span>${d}</span>`).join('')+'</div><div class="grid">';
@@ -398,9 +486,20 @@ const openSh=id=>$(id).classList.add('on'), closeSh=id=>$(id).classList.remove('
 ['sheet','set'].forEach(id=>$(id).addEventListener('click',e=>{if(e.target===$(id)){id==='set'?$('sClose').onclick():$('fCancel').onclick()}}));
 
 function drawCats(){$('fCats').innerHTML=S.cats.map(c=>`<button type="button" class="chip ${c.n===selCat?'on':''}" style="--c:${c.c}" data-c="${esc(c.n)}"><i></i>${esc(c.n)}</button>`).join('')}
+let convTok=0;
+async function updConv(){
+  const el=$('fConv'),c=$('fCurSel').value,a=parseAmount($('fAmount').value),d=$('fDate').value||today(),tok=++convTok;
+  if(c===S.base||!(a>0)){el.textContent=c===S.base?'':'';return}
+  el.textContent='…';
+  const x=await fetchRate(c,S.base,d);
+  if(tok!==convTok)return;
+  el.textContent=x?'≈ '+fmt(a*x.r)+' · курс '+x.r.toFixed(4):'курс загрузится позже';
+}
+['fAmount','fDate'].forEach(i=>$(i).addEventListener('input',updConv));
+$('fCurSel').addEventListener('change',updConv);
 function openSheet(pref={},id=null){
   editId=id;$('sheetTitle').textContent=id?'Правка':'Новая трата';
-  $('fAmount').value=pref.amount??'';$('fNote').value=pref.note??'';$('fDate').value=pref.date||today();$('fCur').textContent=S.cur;
+  $('fAmount').value=pref.amount??'';$('fNote').value=pref.note??'';$('fDate').value=pref.date||today();  fillCurSel($('fCurSel'),pref.cur||detectCur(pref.note)||S.defCur);updConv();
   selCat=pref.cat||guessCat(pref.note);$('ocrHint').textContent=pref.hint||'';
   $('fDel').hidden=!id;drawCats();openSh('sheet');
   if(!pref.amount)setTimeout(()=>$('fAmount').focus(),250);
@@ -415,10 +514,14 @@ $('fCancel').onclick=()=>{pendingSrc=null;closeSh('sheet')};
 $('fSave').onclick=()=>{
   const amount=parseAmount($('fAmount').value);
   if(!(amount>0)){toast('Введи сумму');return}
-  const rec={amount,note:$('fNote').value.trim(),cat:selCat,date:$('fDate').value||today()};
-  if(editId){const t=S.tx.find(t=>t.id===editId);Object.assign(t,rec);touch(t)}
-  else S.tx.push({id:uid(),src:pendingSrc||'manual',...rec,u:Date.now(),dirty:true});
+  const cur=$('fCurSel').value||S.base;
+  const rec={amount,note:$('fNote').value.trim(),cat:selCat,date:$('fDate').value||today(),cur};
+  let t;
+  if(editId){t=S.tx.find(t=>t.id===editId);if(t.cur!==cur||t.date!==rec.date)t.rates=null;Object.assign(t,rec);touch(t)}
+  else{t={id:uid(),src:pendingSrc||'manual',...rec,u:Date.now(),dirty:true};S.tx.push(t)}
+  if(cur!==S.defCur){S.recent=[cur,...(S.recent||[]).filter(x=>x!==cur)].slice(0,4)}
   pendingSrc=null;save();closeSh('sheet');
+  ensureRate(t).then(r=>{if(r==='ok'){save();render()}});
   selDay=null;const d=new Date(rec.date+'T00:00');view=new Date(d.getFullYear(),d.getMonth(),1);render();
 };
 $('fDel').onclick=()=>{if(!editId||!confirm('Удалить трату?'))return;const t=S.tx.find(x=>x.id===editId);t.del=true;touch(t);save();closeSh('sheet');render()};
@@ -459,14 +562,17 @@ $('file').onchange=async e=>{
 
 // ---------- настройки ----------
 function drawSet(){
-  $('sCur').value=S.cur;
+  fillCurSel($('sBase'),S.base);fillCurSel($('sDef'),S.defCur);
   $('sCats').innerHTML=S.cats.map(c=>`<div class="crow" style="--c:${c.c}"><span class="dot"></span><span class="n">${esc(c.n)}</span><button class="x" data-n="${esc(c.n)}" aria-label="Удалить категорию"><svg class="i" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>`).join('');
   $('sSw').innerHTML=PALETTE.map(c=>`<button type="button" class="${c===newColor?'on':''}" style="--c:${c}" data-c="${c}" aria-label="Цвет"></button>`).join('');
   const link=applePayLink();$('sLinkTxt').textContent=link.replace(/^https?:\/\//,'');
 }
 const applePayLink=()=>location.origin+location.pathname+'#add?amount=AMOUNT&merchant=MERCHANT';
 $('gear').onclick=()=>{drawSet();updSyncUI();openSh('set');checkAdmin()};
-$('sClose').onclick=()=>{closeSh('set');try{const c=$('sCur').value||'$';if(c!==S.cur){S.cur=c;setTouch()}save();render()}catch(e){toast('Ошибка: '+e.message)}};
+$('sClose').onclick=()=>{closeSh('set');try{
+  const b=$('sBase').value||S.base,d=$('sDef').value||S.defCur;
+  if(b!==S.base||d!==S.defCur){S.base=b;S.cur=sym(b);S.defCur=d;setTouch()}
+  save();render();ensureRates()}catch(e){toast('Ошибка: '+e.message)}};
 $('sX').onclick=()=>$('sClose').onclick();
 $('sSw').onclick=e=>{const b=e.target.closest('button');if(!b)return;newColor=b.dataset.c;drawSet()};
 $('sAdd').onclick=()=>{const n=$('sName').value.trim();if(!n||S.cats.some(c=>c.n===n))return;S.cats.push({n,c:newColor});newColor=PALETTE[(S.cats.length)%PALETTE.length];setTouch();$('sName').value='';save();drawSet()};
@@ -474,31 +580,35 @@ $('sCats').onclick=e=>{const b=e.target.closest('.x');if(!b)return;if(S.cats.len
 $('sCopy').onclick=async()=>{try{await navigator.clipboard.writeText(applePayLink().replace('AMOUNT','').replace('MERCHANT',''));toast('Ссылка скопирована')}catch(e){prompt('Скопируй ссылку:',applePayLink())}};
 $('exp').onclick=()=>{const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([JSON.stringify(S,null,1)],{type:'application/json'}));a.download='finance-backup-'+today()+'.json';a.click()};
 $('imp').onclick=()=>$('impFile').click();
-$('impFile').onchange=async e=>{const f=e.target.files[0];if(!f)return;try{const d=JSON.parse(await f.text());if(!d.tx||!d.cats)throw 0;if(confirm('Заменить текущие данные импортируемыми?')){S=d;S.cats=normCats(S.cats);S.lastPull=0;S.uid=user?user.id:undefined;S.tx.forEach(touch);setTouch();save();drawSet();render()}}catch(_){toast('Неверный файл')}e.target.value=''};
+$('impFile').onchange=async e=>{const f=e.target.files[0];if(!f)return;try{const d=JSON.parse(await f.text());if(!d.tx||!d.cats)throw 0;if(confirm('Заменить текущие данные импортируемыми?')){S=norm(d);S.lastPull=0;S.uid=user?user.id:undefined;S.tx.forEach(touch);setTouch();save();drawSet();render()}}catch(_){toast('Неверный файл')}e.target.value=''};
 
 // ---------- Apple Pay / ссылка: #add?amount=12.5&merchant=Starbucks[&cat=Кафе][&date=2026-11-03] ----------
 function handleHash(){
   if(!location.hash.startsWith('#add'))return;
   const p=new URLSearchParams(location.hash.split('?')[1]||'');
   history.replaceState(null,'',location.pathname);
-  const amount=parseAmount((p.get('amount')||'').replace(/[^\d.,-]/g,''));
+  const rawAmt=p.get('amount')||'';
+  const cur=(p.get('cur')||p.get('currency')||'').toUpperCase();
+  const tcur=CURS.includes(cur)?cur:(detectCur(rawAmt)||S.defCur);
+  const amount=parseAmount(rawAmt.replace(/[^\d.,-]/g,''));
   const note=(p.get('merchant')||p.get('note')||'').trim();
   if(!(amount>0)){
     pendingSrc='applepay';
-    if(!$('app').hidden)openSheet({note,hint:'Оплата Apple Pay — введи сумму.'});
+    if(!$('app').hidden)openSheet({note,cur:tcur,hint:'Оплата Apple Pay — введи сумму.'});
     return;
   }
   const cat=S.cats.some(c=>c.n===p.get('cat'))?p.get('cat'):guessCat(note);
   const date=/^\d{4}-\d{2}-\d{2}$/.test(p.get('date')||'')?p.get('date'):today();
-  S.tx.push({id:uid(),src:'applepay',amount:Math.abs(amount),note,cat,date,u:Date.now(),dirty:true});save();
+  const nt={id:uid(),src:'applepay',amount:Math.abs(amount),note,cat,date,cur:tcur,u:Date.now(),dirty:true};
+  S.tx.push(nt);save();ensureRate(nt).then(r=>{if(r==='ok'){save();render()}});
   const d=new Date(date+'T00:00');view=new Date(d.getFullYear(),d.getMonth(),1);
-  render();toast('Записано: '+fmt(Math.abs(amount)));
+  render();toast('Записано: '+fmt(Math.abs(amount),tcur));
 }
 window.addEventListener('hashchange',handleHash);
 
 // ---------- облако (Supabase): local-first, last-write-wins по полю u ----------
 const CFG=window.FIN_CONFIG||{};
-let sb=null,user=null,syncing=false,again=false,syncT=null,authChecked=false,sbP=null,authMode='in',recovering=/type=recovery/.test(location.hash);
+let noExtra=false,sb=null,user=null,syncing=false,again=false,syncT=null,authChecked=false,sbP=null,authMode='in',recovering=/type=recovery/.test(location.hash);
 const sbReady=()=>!!(CFG.url&&CFG.key);
 const hadAuth=(()=>{try{return !!localStorage.getItem('fin.auth')}catch(e){return false}})();
 function loadSb(){return new Promise((res,rej)=>{if(window.supabase)return res();const s=document.createElement('script');s.src='https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js';s.onload=res;s.onerror=()=>rej(new Error('offline'));document.head.appendChild(s)})}
@@ -536,10 +646,10 @@ async function sync(){
     S.uid=user.id;
     const {data:sr,error:se}=await sb.from('settings').select('data,u').maybeSingle();
     if(se)throw se;
-    if(sr&&sr.u>(S.setU||0)){S.cats=normCats((sr.data&&sr.data.cats)||S.cats);S.cur=(sr.data&&sr.data.cur)||S.cur;S.setU=Number(sr.u);S.setDirty=false}
+    if(sr&&sr.u>(S.setU||0)){S.cats=normCats((sr.data&&sr.data.cats)||S.cats);if(sr.data&&sr.data.base){S.base=sr.data.base;S.cur=sym(S.base)}if(sr.data&&sr.data.defCur)S.defCur=sr.data.defCur;S.setU=Number(sr.u);S.setDirty=false}
     else if(!sr||S.setDirty){
       const u=S.setU||Date.now();
-      const {error}=await sb.from('settings').upsert({user_id:user.id,data:{cats:S.cats,cur:S.cur},u});
+      const {error}=await sb.from('settings').upsert({user_id:user.id,data:{cats:S.cats,cur:S.cur,base:S.base,defCur:S.defCur},u});
       if(error)throw error;
       S.setU=u;S.setDirty=false;
     }
@@ -547,7 +657,9 @@ async function sync(){
     for(let i=0;i<dirty.length;i+=200){
       const chunk=dirty.slice(i,i+200);
       const sent=new Map(chunk.map(t=>[t.id,t.u]));
-      const {error}=await sb.from('transactions').upsert(chunk.map(t=>({id:t.id,user_id:user.id,amount:t.amount,note:t.note||'',cat:t.cat,date:t.date,src:t.src||'manual',deleted:!!t.del,u:t.u})));
+      const rows=chunk.map(t=>({id:t.id,user_id:user.id,amount:t.amount,note:t.note||'',cat:t.cat,date:t.date,src:t.src||'manual',deleted:!!t.del,u:t.u,...(noExtra?{}:{cur:t.cur||S.base,rates:t.rates||null})}));
+      let {error}=await sb.from('transactions').upsert(rows);
+      if(error&&!noExtra&&/cur|rates|column/i.test(error.message||'')){noExtra=true;({error}=await sb.from('transactions').upsert(rows.map(({cur,rates,...o})=>o)))}
       if(error)throw error;
       chunk.forEach(t=>{if(t.u===sent.get(t.id))delete t.dirty});
     }
@@ -555,14 +667,14 @@ async function sync(){
       const {data:rows,error}=await sb.from('transactions').select('*').gt('u',S.lastPull).order('u').limit(1000);
       if(error)throw error;
       for(const r of rows){
-        const n={id:r.id,amount:Number(r.amount),note:r.note||'',cat:r.cat,date:r.date,src:r.src,u:Number(r.u),del:r.deleted||undefined};
+        const n={id:r.id,amount:Number(r.amount),note:r.note||'',cat:r.cat,date:r.date,src:r.src,cur:r.cur||S.base,rates:r.rates||undefined,u:Number(r.u),del:r.deleted||undefined};
         const t=S.tx.find(x=>x.id===r.id);
         if(!t)S.tx.push(n);else if(n.u>t.u){Object.assign(t,n);delete t.dirty}
         S.lastPull=Math.max(S.lastPull,n.u);
       }
       if(rows.length<1000)break;
     }
-    persist();render();
+    persist();render();ensureRates();
     updSyncUI('Обновлено '+new Date().toLocaleTimeString('ru-RU',{hour:'2-digit',minute:'2-digit'}));
   }catch(e){updSyncUI('Ошибка: '+(e.message||e))}
   finally{syncing=false;if(again){again=false;scheduleSync()}}
@@ -676,7 +788,7 @@ if(/error_code=|error_description=/.test(location.hash)){
   history.replaceState(null,'',location.pathname);
   setMode('in');setErr(expired?'Ссылка устарела. Запроси новое письмо.':'Не удалось выполнить действие по ссылке.');
 }
-render();handleHash();initSync();
+render();handleHash();initSync();ensureRates();window.addEventListener('online',ensureRates);
 if('serviceWorker'in navigator)navigator.serviceWorker.register('sw.js').catch(()=>{});
 </script>
 </body>

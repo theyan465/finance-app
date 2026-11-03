@@ -26,3 +26,4 @@ alter table settings enable row level security;
 drop policy if exists "own settings" on settings;
 create policy "own settings" on settings
   for all using (user_id = auth.uid()) with check (user_id = auth.uid());
+alter table public.transactions add column if not exists cur text, add column if not exists rates jsonb;
