@@ -1,4 +1,4 @@
-const CACHE = 'fin-v5';
+const CACHE = 'fin-v6';
 const SHELL = ['./', 'index.html', 'config.js', 'manifest.webmanifest', 'icon.svg', 'icon-180.png', 'icon-192.png', 'icon-512.png'];
 
 self.addEventListener('install', e => {

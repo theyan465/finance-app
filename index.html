@@ -97,6 +97,12 @@ svg.i{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:1.8;stro
 .mbtn:active{background:var(--s2)}
 .mbtn svg{width:16px;height:16px;color:var(--mut)}
 .mbtn.f b::after{content:"";display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--heat);margin-left:7px;vertical-align:middle}
+.urow{display:flex;align-items:center;gap:12px;padding:13px 16px}
+.urow+.urow{border-top:1px solid var(--line)}
+.urow .mid{flex:1;min-width:0}
+.urow .mid b{display:block;font-weight:550;font-size:15px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.urow .mid i{display:block;font-style:normal;font-size:12px;color:var(--mut);margin-top:2px}
+.mini{padding:8px 14px;border-radius:16px;background:var(--s2);font-size:13px;font-weight:600;flex:none}
 .lnk2{display:block;margin:16px auto 0;color:var(--mut);font-size:14px;padding:6px 10px}
 .rt{font-size:26px;font-weight:650;letter-spacing:-.02em;margin:0 0 18px}
 .big{display:flex;align-items:baseline;justify-content:center;gap:8px;padding:18px 0 14px}
@@ -241,6 +247,10 @@ input.in:focus{border-color:var(--mut)}
       </div>
     </div>
 
+    <div id="adm" hidden><h3>Администрирование</h3>
+      <div class="card"><button class="lnk" id="admOpen">Пользователи и пароли</button></div>
+    </div>
+
     <h3>Валюта</h3>
     <input class="in" id="sCur" maxlength="4" aria-label="Символ валюты">
 
@@ -260,6 +270,21 @@ input.in:focus{border-color:var(--mut)}
     <div class="pfoot"><button class="btn pri" id="sClose">Готово</button></div>
   </div></div>
 </div>
+<!-- админка -->
+<div class="sheet" id="admSheet"><div class="panel">
+  <div class="grab"></div>
+  <div class="phead"><h2>Пользователи</h2><button class="ico" id="admX" aria-label="Закрыть"><svg class="i" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>
+  <div class="card" id="admList"></div>
+  <div class="hint" id="admHint"></div>
+</div></div>
+<div class="sheet" id="pwSheet"><div class="panel">
+  <div class="grab"></div>
+  <div class="phead"><h2>Новый пароль</h2><button class="ico" id="pwX" aria-label="Закрыть"><svg class="i" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>
+  <div class="hint" id="pwWho" style="margin:0 4px 6px"></div>
+  <label class="field"><span>Пароль</span><input class="in" id="pwVal" type="text" autocomplete="off" autocapitalize="off" spellcheck="false"></label>
+  <div class="err" id="pwErr"></div>
+  <div class="btns"><button class="btn" id="pwGen">Сгенерировать</button><button class="btn pri" id="pwSave">Сохранить</button></div>
+</div></div>
 <div id="toast"></div>
 
 <script>
@@ -440,7 +465,7 @@ function drawSet(){
   const link=applePayLink();$('sLinkTxt').textContent=link.replace(/^https?:\/\//,'');
 }
 const applePayLink=()=>location.origin+location.pathname+'#add?amount=AMOUNT&merchant=MERCHANT';
-$('gear').onclick=()=>{drawSet();updSyncUI();openSh('set')};
+$('gear').onclick=()=>{drawSet();updSyncUI();openSh('set');checkAdmin()};
 $('sClose').onclick=()=>{closeSh('set');try{const c=$('sCur').value||'$';if(c!==S.cur){S.cur=c;setTouch()}save();render()}catch(e){toast('Ошибка: '+e.message)}};
 $('sX').onclick=()=>$('sClose').onclick();
 $('sSw').onclick=e=>{const b=e.target.closest('button');if(!b)return;newColor=b.dataset.c;drawSet()};
@@ -585,18 +610,7 @@ async function doReset(){
   }catch(err){setErr(authMsg(err.message))}
   finally{$('aGo').disabled=false}
 }
-$('aForgot').onclick=async()=>{
-  const email=$('aEmail').value.trim();
-  if(!email)return setErr('Введи email выше, и я отправлю ссылку для сброса');
-  setErr('');
-  try{
-    if(sbP)await sbP;
-    if(!sb)throw new Error('Нет соединения');
-    const {error}=await sb.auth.resetPasswordForEmail(email,{redirectTo:location.origin+location.pathname});
-    if(error)throw error;
-    setErr('Если такой аккаунт есть, письмо со ссылкой отправлено.',true);
-  }catch(err){setErr(authMsg(err.message))}
-};
+$('aForgot').onclick=()=>setErr('Напиши администратору: он задаст тебе новый пароль.',true);
 $('aForm').onsubmit=async e=>{
   e.preventDefault();
   if(authMode==='reset')return doReset();
@@ -616,6 +630,42 @@ $('aForm').onsubmit=async e=>{
   }catch(err){setErr(authMsg(err.message))}
   finally{$('aGo').disabled=false}
 };
+// ---------- админка (права проверяются на сервере функциями из admin.sql) ----------
+let isAdmin=false,admUsers=[],pwTarget=null;
+async function checkAdmin(){
+  if(!sb||!user){isAdmin=false;$('adm').hidden=true;return}
+  try{const {data,error}=await sb.rpc('is_admin');isAdmin=!error&&data===true}catch(e){isAdmin=false}
+  $('adm').hidden=!isAdmin;
+}
+const dShort=s=>s?new Date(s).toLocaleDateString('ru-RU',{day:'numeric',month:'short'}):'—';
+async function loadUsers(){
+  $('admList').innerHTML='<div class="kv"><span>Загрузка…</span></div>';$('admHint').textContent='';
+  const {data,error}=await sb.rpc('admin_list_users');
+  if(error){$('admList').innerHTML='';$('admHint').textContent='Ошибка: '+error.message;return}
+  admUsers=data||[];$('admHint').textContent='Всего пользователей: '+admUsers.length;
+  $('admList').innerHTML=admUsers.map(u=>`<div class="urow"><div class="mid"><b>${esc(u.email||'без email')}${user&&u.id===user.id?' · вы':''}</b><i>рег. ${dShort(u.created_at)} · вход ${dShort(u.last_sign_in_at)} · ${u.tx_count} трат</i></div><button class="mini" data-id="${u.id}">Пароль</button></div>`).join('');
+}
+$('admOpen').onclick=()=>{if(!sb)return toast('Нет соединения');openSh('admSheet');loadUsers()};
+$('admX').onclick=()=>closeSh('admSheet');
+$('admList').onclick=e=>{
+  const b=e.target.closest('.mini');if(!b)return;
+  pwTarget=admUsers.find(u=>u.id===b.dataset.id);if(!pwTarget)return;
+  $('pwWho').textContent=pwTarget.email;$('pwVal').value='';$('pwErr').textContent='';
+  openSh('pwSheet');setTimeout(()=>$('pwVal').focus(),250);
+};
+const genPw=()=>{const a='abcdefghjkmnpqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789';return Array.from(crypto.getRandomValues(new Uint32Array(10)),x=>a[x%a.length]).join('')};
+$('pwGen').onclick=()=>{$('pwVal').value=genPw()};
+$('pwX').onclick=()=>closeSh('pwSheet');
+$('pwSave').onclick=async()=>{
+  const pw=$('pwVal').value;
+  if(pw.length<6){$('pwErr').textContent='Пароль от 6 символов';return}
+  $('pwSave').disabled=true;$('pwErr').textContent='';
+  const {error}=await sb.rpc('admin_set_password',{target:pwTarget.id,new_password:pw});
+  $('pwSave').disabled=false;
+  if(error){$('pwErr').textContent='Ошибка: '+error.message;return}
+  closeSh('pwSheet');toast('Пароль изменён: '+pwTarget.email);
+};
+['admSheet','pwSheet'].forEach(id=>$(id).addEventListener('click',e=>{if(e.target===$(id))closeSh(id)}));
 $('aSync').onclick=()=>sync();
 $('aOut').onclick=async()=>{if(!confirm('Выйти из аккаунта? Данные на устройстве сохранятся.'))return;closeSh('set');if(sb)await sb.auth.signOut();user=null;gate()};
 window.addEventListener('online',sync);
