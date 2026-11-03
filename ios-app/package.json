@@ -1,0 +1,12 @@
+{
+  "name": "finance-ios",
+  "private": true,
+  "scripts": {
+    "sync": "node build.js && npx cap sync ios"
+  },
+  "dependencies": {
+    "@capacitor/core": "^7.0.0",
+    "@capacitor/cli": "^7.0.0",
+    "@capacitor/ios": "^7.0.0"
+  }
+}

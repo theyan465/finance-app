@@ -251,6 +251,7 @@ input.in:focus{border-color:var(--mut)}
         <div class="kv"><span>Синхронизация</span><b id="syncStat"></b></div>
         <button class="lnk" id="aSync">Синхронизировать сейчас</button>
         <button class="lnk red" id="aOut">Выйти</button>
+        <button class="lnk red" id="aDel">Удалить аккаунт и данные</button>
       </div>
     </div>
 
@@ -779,6 +780,13 @@ $('pwSave').onclick=async()=>{
 };
 ['admSheet','pwSheet'].forEach(id=>$(id).addEventListener('click',e=>{if(e.target===$(id))closeSh(id)}));
 $('aSync').onclick=()=>sync();
+$('aDel').onclick=async()=>{
+  if(!sb||!user||!confirm('Удалить аккаунт и все данные безвозвратно?'))return;
+  if(!confirm('Точно удалить? Отменить нельзя.'))return;
+  const {error}=await sb.rpc('delete_my_account');
+  if(error){toast('Ошибка: '+error.message);return}
+  try{localStorage.removeItem(KEY)}catch(e){}
+  await sb.auth.signOut();location.reload()};
 $('aOut').onclick=async()=>{if(!confirm('Выйти из аккаунта? Данные на устройстве сохранятся.'))return;closeSh('set');if(sb)await sb.auth.signOut();user=null;gate()};
 window.addEventListener('online',sync);
 document.addEventListener('visibilitychange',()=>{if(!document.hidden)sync()});
