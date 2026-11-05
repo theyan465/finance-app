@@ -303,7 +303,7 @@ input.in:focus{border-color:var(--mut)}
 const KEY='fin.v1';
 const PALETTE=['#4fd1a5','#ff8a5b','#6aa6ff','#b69cff','#ff6b8b','#f5c451','#e58ad9','#5ed0e6','#9bd45b','#9aa3b2'];
 const DEF_CATS=[['Продукты','#4fd1a5'],['Кафе и рестораны','#ff8a5b'],['Транспорт','#6aa6ff'],['Жильё','#b69cff'],['Здоровье','#ff6b8b'],['Развлечения','#f5c451'],['Одежда','#e58ad9'],['Связь и подписки','#5ed0e6'],['Подарки','#9bd45b'],['Другое','#9aa3b2']];
-const RULES={'Продукты':/пятёрочка|пятерочка|магнит|перекрёсток|перекресток|лента|дикси|вкусвилл|ашан|market|grocery|supermarket|spar|lidl|aldi|tesco|walmart|costco/i,
+const RULES={'Продукты':/пятёрочка|пятерочка|магнит|перекрёсток|перекресток|лента|дикси|вкусвилл|ашан|market|grocery|supermarket|spar|lidl|aldi|tesco|walmart|costco|stokrotka|biedronka|żabka|zabka|carrefour|auchan|kaufland|dino|netto|rossmann|intermarch/i,
 'Кафе и рестораны':/кафе|ресторан|coffee|кофе|starbucks|mcdonald|burger|kfc|pizza|пицц|sushi|суши|bar\b|бар\b|cafe|restaurant/i,
 'Транспорт':/taxi|такси|uber|bolt|яндекс.?go|metro|метро|азс|fuel|shell|bp\b|lukoil|парков|parking|rail|ржд/i,
 'Здоровье':/аптек|pharm|clinic|клиник|стоматолог|dental/i,
@@ -534,19 +534,78 @@ $('cPrev').onclick=()=>shiftMonth(-1);$('cNext').onclick=()=>shiftMonth(1);
 // ---------- распознавание чека (Tesseract.js, локально в браузере) ----------
 let tessLoading=null;
 function loadTess(){return tessLoading||(tessLoading=new Promise((res,rej)=>{const s=document.createElement('script');s.src='https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js';s.onload=res;s.onerror=()=>{tessLoading=null;rej(new Error('Не удалось загрузить OCR (нужен интернет)'))};document.head.appendChild(s)}))}
-function parseReceipt(text){
+const KEYW=/suma|razem|do zap[łl]aty|nale[żz]no[śs][ćc]|итог|к оплате|к уплате|всего|total|amount due|balance due|grand|got[óo]wk|karta|p[łl]atno/i;
+const SKIPW=/ptu|vat|ндс|tax|podat|opodat|sprzeda[żz]|rabat|скидк|reszta|zmiana|sdach|change/i;
+const numRe=/\d{1,3}(?:[  ]\d{3})*[.,]\d{2}(?!\d)|\d+[.,]\d{2}(?!\d)/g;
+const numsOf=l=>(l.match(numRe)||[]).map(x=>parseAmount(x.replace(/[\s ]/g,''))).filter(isFinite);
+function parseOne(text){
   const lines=text.split('\n').map(l=>l.trim()).filter(Boolean);
-  const nums=l=>(l.match(/\d{1,3}(?:[  ]?\d{3})*[.,]\d{2}(?!\d)/g)||[]).map(x=>parseAmount(x.replace(/[\s ]/g,'')));
-  let amount=NaN;
-  const key=/итог|к оплате|к уплате|всего|сумма|total|amount due|balance due|grand/i;
-  const cand=[];
-  lines.forEach(l=>{if(key.test(l)&&!/ндс|vat|tax|налог|скидк/i.test(l))cand.push(...nums(l))});
-  if(cand.length)amount=Math.max(...cand);
-  else{const all=lines.flatMap(nums);if(all.length)amount=Math.max(...all)}
-  const merchant=(lines.find(l=>/[A-Za-zА-Яа-я]{3,}/.test(l)&&!/^\d/.test(l))||'').slice(0,40);
-  let date;const m=text.match(/(\d{2})[.\/-](\d{2})[.\/-](\d{4}|\d{2})/);
-  if(m){let y=m[3].length===2?'20'+m[3]:m[3];const iso=`${y}-${m[2]}-${m[1]}`;if(!isNaN(new Date(iso)))date=iso}
-  return{amount:isFinite(amount)?amount:'',note:merchant,date};
+  const cand=[],items=[],all=[];
+  lines.forEach(l=>{
+    const n=numsOf(l);all.push(...n);
+    if(KEYW.test(l)&&!SKIPW.test(l))cand.push(...n);
+    if(/\d\s*(szt|шт|pcs)|\bx\s?\d+[.,]\d{2}/i.test(l)&&n.length)items.push(n[n.length-1]);
+  });
+  return{lines,cand,all,itemSum:Math.round(items.reduce((a,b)=>a+b,0)*100)/100};
+}
+function parseReceipt(texts){
+  texts=[].concat(texts);
+  const ps=texts.map(parseOne);
+  const score={};
+  const same=(a,b)=>Math.abs(a-b)<0.005;
+  ps.forEach(p=>p.cand.forEach(v=>{const k=v.toFixed(2);score[k]=(score[k]||0)+1}));
+  ps.forEach(p=>{if(p.itemSum>0&&ps.some(q=>q.all.some(v=>same(v,p.itemSum)))){const k=p.itemSum.toFixed(2);score[k]=(score[k]||0)+3}});
+  let amount='';
+  const keys=Object.keys(score);
+  if(keys.length)amount=+keys.sort((a,b)=>score[b]-score[a]||b-a)[0];
+  else{const all=ps.flatMap(p=>p.all);if(all.length)amount=Math.max(...all)}
+  const joined=texts.join('\n');
+  const lines=ps[0].lines.length>=ps[ps.length-1].lines.length?ps[0].lines:ps[ps.length-1].lines;
+  const generic=/sklep|paragon|fiskal|^nip|bdo|ul\.|tel\b|www|\d{2}-\d{3}|faktura|kasa|wielobran|чек|касс|инн/i;
+  const merchant=(lines.find(l=>{const L=(l.match(/[A-Za-zĄĆĘŁŃÓŚŹŻąćęłńóśźżА-Яа-я]/g)||[]).length;return L>=4&&L/l.length>0.7&&!generic.test(l)})||'').replace(/[^\wĄĆĘŁŃÓŚŹŻąćęłńóśźżА-Яа-я .&'-]/g,'').trim().slice(0,40);
+  let date;
+  let m=joined.match(/(20\d{2})[-.\/](0[1-9]|1[0-2])[-.\/](0[1-9]|[12]\d|3[01])/);
+  if(m)date=`${m[1]}-${m[2]}-${m[3]}`;
+  else{m=joined.match(/(0[1-9]|[12]\d|3[01])[.\/-](0[1-9]|1[0-2])[.\/-](20\d{2}|\d{2})(?!\d)/);if(m){const y=m[3].length===2?'20'+m[3]:m[3];date=`${y}-${m[2]}-${m[1]}`}}
+  const cur=detectCur(joined.replace(/\$/g,'')) || undefined;
+  return{amount:isFinite(amount)?amount:'',note:merchant,date,cur};
+}
+// обрезка по бумаге чека + серый + контраст, масштаб под распознавание
+async function prepReceipt(file,W){
+  let bmp;try{bmp=await createImageBitmap(file,{imageOrientation:'from-image'})}catch(e){bmp=await createImageBitmap(file)}
+  const sc=300/Math.max(bmp.width,bmp.height),sw=Math.max(1,Math.round(bmp.width*sc)),sh=Math.max(1,Math.round(bmp.height*sc));
+  const sc1=document.createElement('canvas');sc1.width=sw;sc1.height=sh;const sx=sc1.getContext('2d',{willReadFrequently:true});
+  sx.drawImage(bmp,0,0,sw,sh);const d=sx.getImageData(0,0,sw,sh).data;
+  const g=new Uint8Array(sw*sh),hist=new Array(256).fill(0);
+  for(let i=0;i<g.length;i++){const v=(d[i*4]*77+d[i*4+1]*150+d[i*4+2]*29)>>8;g[i]=v;hist[v]++}
+  let acc=0,p99=255;for(let v=0;v<256;v++){acc+=hist[v];if(acc>=g.length*0.99){p99=v;break}}
+  const th=p99*0.88,lab=new Uint8Array(g.length);let best=null;
+  for(let s0=0;s0<g.length;s0++){
+    if(lab[s0]||g[s0]<=th)continue;
+    const st=[s0];lab[s0]=1;let n=0,x0=sw,x1=0,y0=sh,y1=0;
+    while(st.length){const p=st.pop(),x=p%sw,y=(p/sw)|0;n++;if(x<x0)x0=x;if(x>x1)x1=x;if(y<y0)y0=y;if(y>y1)y1=y;
+      if(x>0&&!lab[p-1]&&g[p-1]>th){lab[p-1]=1;st.push(p-1)}
+      if(x<sw-1&&!lab[p+1]&&g[p+1]>th){lab[p+1]=1;st.push(p+1)}
+      if(y>0&&!lab[p-sw]&&g[p-sw]>th){lab[p-sw]=1;st.push(p-sw)}
+      if(y<sh-1&&!lab[p+sw]&&g[p+sw]>th){lab[p+sw]=1;st.push(p+sw)}}
+    if(!best||n>best.n)best={n,x0,x1,y0,y1};
+  }
+  let cx=0,cy=0,cw=bmp.width,ch=bmp.height;
+  if(best&&best.n>0.08*g.length&&best.n<0.9*g.length){
+    const mg=0.02*Math.max(bmp.width,bmp.height);
+    cx=Math.max(0,best.x0/sc-mg);cy=Math.max(0,best.y0/sc-mg);
+    cw=Math.min(bmp.width-cx,(best.x1+1)/sc-cx+2*mg);ch=Math.min(bmp.height-cy,(best.y1+1)/sc-cy+2*mg);
+  }
+  const k=W/cw,c=document.createElement('canvas');c.width=W;c.height=Math.round(ch*k);
+  const cx2=c.getContext('2d',{willReadFrequently:true});cx2.imageSmoothingQuality='high';cx2.drawImage(bmp,cx,cy,cw,ch,0,0,c.width,c.height);
+  const im=cx2.getImageData(0,0,c.width,c.height),px=im.data,h2=new Array(256).fill(0);
+  for(let i=0;i<px.length;i+=4){const v=(px[i]*77+px[i+1]*150+px[i+2]*29)>>8;px[i]=v;h2[v]++}
+  const tot=c.width*c.height;let a=0,lo=0,hi=255;
+  for(let v=0;v<256;v++){a+=h2[v];if(a>=tot*0.01){lo=v;break}}
+  a=0;for(let v=255;v>=0;v--){a+=h2[v];if(a>=tot*0.01){hi=v;break}}
+  const r=Math.max(1,hi-lo);
+  for(let i=0;i<px.length;i+=4){const v=Math.max(0,Math.min(255,(px[i]-lo)*255/r));px[i]=px[i+1]=px[i+2]=v}
+  cx2.putImageData(im,0,0);return c;
 }
 $('scan').onclick=()=>$('file').click();
 $('file').onchange=async e=>{
@@ -554,8 +613,15 @@ $('file').onchange=async e=>{
   toast('Распознаю чек…');
   try{
     await loadTess();
-    const {data}=await Tesseract.recognize(f,'rus+eng');
-    const r=parseReceipt(data.text);
+    const w=await Tesseract.createWorker('pol+eng');
+    const texts=[];
+    try{
+      for(const [W,psm] of [[800,'6'],[900,'4'],[700,'6']]){
+        await w.setParameters({tessedit_pageseg_mode:psm,preserve_interword_spaces:'1'});
+        const {data}=await w.recognize(await prepReceipt(f,W));texts.push(data.text);
+      }
+    }finally{await w.terminate()}
+    const r=parseReceipt(texts);
     pendingSrc='receipt';
     openSheet({...r,hint:'Распознано автоматически — проверь сумму и название.'});
   }catch(err){toast(err.message||'Ошибка распознавания');pendingSrc=null}
