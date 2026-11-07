@@ -29,7 +29,7 @@ window.__db={settings:null,tx:[]};window.__log=[];
       signOut:async()=>{user=null;emit('SIGNED_OUT');return{error:null}},
       resetPasswordForEmail:async()=>({error:null}),updateUser:async()=>({data:{},error:null})
     },
-    rpc:async(n)=>{window.__log.push(['rpc',n]);return{data:n==='is_admin'?false:null,error:null}},
+    rpc:async(n)=>{window.__log.push(['rpc',n]);try{sessionStorage.setItem('rpc:'+n,'1')}catch(e){}return{data:n==='is_admin'?false:null,error:null}},
     from:(t)=>{const q={};q.select=()=>q;q.gt=(c,v)=>{q.g=v;return q};q.order=()=>q;q.limit=()=>q;
       q.maybeSingle=()=>Promise.resolve({data:window.__db.settings,error:null});
       q.then=(res,rej)=>Promise.resolve({data:window.__db.tx.filter(r=>r.u>(q.g||0)),error:null}).then(res,rej);
@@ -185,7 +185,8 @@ const sum = async page => norm(await page.textContent('#sum'));
     ok(/47,00/.test(await sum(p3)), 'итог 25 + 22 = 47,00: ' + await sum(p3));
     p3.on('dialog', d => d.accept());
     await p3.click('#gear'); await p3.click('#aDel'); await p3.waitForTimeout(600);
-    ok(await p3.evaluate(() => window.__log.some(l => l[0] === 'rpc' && l[1] === 'delete_my_account')), 'кнопка удаления аккаунта вызывает delete_my_account');
+    await p3.waitForLoadState('load');
+    ok(await p3.evaluate(() => sessionStorage.getItem('rpc:delete_my_account') === '1'), 'кнопка удаления аккаунта вызывает delete_my_account');
 
     ok(page.errors.length === 0 && p2.errors.length === 0, 'нет ошибок JS на страницах ' + page.errors.concat(p2.errors).join('|'));
   } catch (e) { fail++; console.log('  CRASH', e.message); }
